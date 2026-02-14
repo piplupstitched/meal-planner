@@ -1,0 +1,11 @@
+{
+	"id": "meal-planner",
+	"name": "Intelligent Meal Planner",
+	"version": "1.0.0",
+	"minAppVersion": "1.0.0",
+	"description": "Intelligent meal planning with recipe parsing, weekly plan generation, cooking history tracking, and grocery list generation.",
+	"author": "Piplup Stitched",
+	"authorUrl": "https://github.com/piplupstitched",
+	"fundingUrl": "https://ko-fi.com/piplupstitched",
+	"isDesktopOnly": true
+}

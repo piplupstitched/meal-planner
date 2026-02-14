@@ -1,0 +1,27 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TypeScript / tooling
+*.tsbuildinfo
+coverage/
+dist/
+
+# Obsidian local-only state
+.obsidian/cache/
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/.trash/
+
+# Plugin dependencies and local build artifacts
+.obsidian/plugins/*/node_modules/
+.obsidian/plugins/*/dist/
+
+node_modules/

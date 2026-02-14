@@ -1,0 +1,412 @@
+/* ── Meal Planner Sidebar ── */
+
+.meal-planner-sidebar {
+	padding: 12px;
+}
+
+.meal-planner-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.meal-planner-header h3 {
+	margin: 0;
+}
+
+.meal-planner-actions {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	max-width: 100%;
+}
+
+.meal-planner-actions button {
+	font-size: 12px;
+	padding: 4px 10px;
+	white-space: nowrap;
+}
+
+.meal-planner-empty {
+	color: var(--text-muted);
+	font-style: italic;
+	text-align: center;
+	padding: 24px 8px;
+}
+
+/* ── Season Badge ── */
+
+.meal-season {
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.meal-season-spring {
+	background-color: hsl(120, 40%, 90%);
+	color: hsl(120, 50%, 30%);
+}
+
+.meal-season-summer {
+	background-color: hsl(45, 80%, 90%);
+	color: hsl(30, 70%, 35%);
+}
+
+.meal-season-fall {
+	background-color: hsl(25, 60%, 90%);
+	color: hsl(20, 60%, 35%);
+}
+
+.meal-season-winter {
+	background-color: hsl(210, 40%, 90%);
+	color: hsl(210, 50%, 35%);
+}
+
+/* ── Meal Rows ── */
+
+.meal-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 10px 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	transition: background-color 0.15s ease, opacity 0.2s ease;
+	cursor: grab;
+}
+
+.meal-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.meal-row.meal-cooked {
+	opacity: 0.6;
+}
+
+.meal-row.meal-cooked .meal-title {
+	text-decoration: line-through;
+}
+
+.meal-row input[type="checkbox"] {
+	margin-top: 4px;
+	flex-shrink: 0;
+}
+
+/* ── Drag Handle ── */
+
+.meal-drag-handle {
+	flex-shrink: 0;
+	width: 16px;
+	text-align: center;
+	font-size: 12px;
+	color: var(--text-muted);
+	cursor: grab;
+	opacity: 0.4;
+	margin-top: 3px;
+	user-select: none;
+	transition: opacity 0.15s ease;
+}
+
+.meal-row:hover .meal-drag-handle {
+	opacity: 1;
+}
+
+/* ── Drag States ── */
+
+.meal-row.meal-dragging {
+	opacity: 0.3;
+	cursor: grabbing;
+}
+
+.meal-row.meal-drag-over-above {
+	border-top: 2px solid var(--interactive-accent);
+	padding-top: 8px;
+}
+
+.meal-row.meal-drag-over-below {
+	border-bottom: 2px solid var(--interactive-accent);
+	padding-bottom: 8px;
+}
+
+.drag-hint {
+	font-size: 11px;
+	color: var(--text-faint);
+	text-align: center;
+	margin-top: 4px;
+	font-style: italic;
+}
+
+/* ── Leftover Rows ── */
+
+.meal-row.meal-leftover {
+	padding: 6px 8px 6px 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+	cursor: default;
+}
+
+.meal-row.meal-leftover:hover {
+	background-color: var(--background-secondary-alt);
+}
+
+.meal-drag-handle-spacer {
+	flex-shrink: 0;
+	width: 16px;
+}
+
+.meal-leftover-badge {
+	font-size: 9px;
+	font-weight: 600;
+	padding: 1px 5px;
+	border-radius: 8px;
+	background-color: hsl(35, 60%, 90%);
+	color: hsl(30, 60%, 35%);
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
+}
+
+.meal-title-leftover {
+	font-size: 13px;
+	font-weight: 400;
+	color: var(--text-muted);
+}
+
+.meal-title-leftover:hover {
+	color: var(--text-accent);
+}
+
+.meal-has-leftovers-badge {
+	font-size: 9px;
+	font-weight: 500;
+	color: hsl(30, 50%, 50%);
+	padding: 1px 4px;
+}
+
+/* ── Meal Info ── */
+
+.meal-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.meal-day-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.meal-day {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.meal-seasonal-badge {
+	font-size: 9px;
+	font-weight: 600;
+	padding: 1px 5px;
+	border-radius: 8px;
+	background-color: hsl(120, 40%, 88%);
+	color: hsl(120, 50%, 30%);
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
+	cursor: help;
+}
+
+.meal-title {
+	font-weight: 500;
+	cursor: pointer;
+	color: var(--text-accent);
+	word-wrap: break-word;
+}
+
+.meal-title:hover {
+	text-decoration: underline;
+}
+
+.meal-meta {
+	font-size: 11px;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+.meal-planner-summary {
+	padding: 12px 8px;
+	border-top: 2px solid var(--background-modifier-border);
+	margin-top: 8px;
+}
+
+.summary-text {
+	font-size: 12px;
+	color: var(--text-muted);
+	text-align: center;
+}
+
+/* ── Recipe Browser Modal ── */
+
+.meal-planner-modal.recipe-browser .modal-content {
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.recipe-filter-bar {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
+}
+
+.recipe-search {
+	flex: 1;
+	min-width: 200px;
+}
+
+.recipe-cat-filter {
+	min-width: 140px;
+}
+
+.recipe-count {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-bottom: 8px;
+}
+
+.recipe-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.recipe-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.recipe-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.recipe-title {
+	font-weight: 500;
+	cursor: pointer;
+	color: var(--text-accent);
+}
+
+.recipe-title:hover {
+	text-decoration: underline;
+}
+
+.recipe-meta {
+	font-size: 11px;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+.recipe-add-btn {
+	font-size: 12px;
+	padding: 4px 10px;
+	flex-shrink: 0;
+}
+
+.recipe-empty {
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 24px;
+}
+
+.meal-planner-modal.recipe-import .setting-item {
+	padding-left: 0;
+	padding-right: 0;
+}
+
+.recipe-import-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+/* ── Grocery List Modal ── */
+
+.meal-planner-modal.grocery-list .modal-content {
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.grocery-toolbar {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
+}
+
+.grocery-toolbar button {
+	font-size: 12px;
+	padding: 4px 10px;
+}
+
+.grocery-todoist-btn {
+	background-color: hsl(4, 80%, 55%);
+	color: white;
+}
+
+.grocery-todoist-btn:hover {
+	background-color: hsl(4, 80%, 45%);
+}
+
+.grocery-progress {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-left: auto;
+}
+
+.grocery-group h4 {
+	margin: 16px 0 6px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: 13px;
+	color: var(--text-accent);
+}
+
+.grocery-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+	font-size: 13px;
+}
+
+.grocery-row.grocery-checked .grocery-name {
+	text-decoration: line-through;
+	opacity: 0.5;
+}
+
+.grocery-name {
+	flex: 1;
+}
+
+.grocery-source {
+	font-size: 11px;
+	color: var(--text-muted);
+	max-width: 180px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.grocery-store {
+	font-size: 11px;
+	padding: 2px 4px;
+	width: 80px;
+}

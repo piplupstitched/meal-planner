@@ -1,0 +1,72 @@
+{
+  "recipeFolderPath": "Recipes",
+  "cookedMeals": [
+    {
+      "recipeId": "Recipes/3. Salads/Mexican Quinoa Salad with Cilantro Lime Dressing.md",
+      "cookedDate": "2026-02-14",
+      "mealType": "lunch"
+    }
+  ],
+  "weeklyPlans": [
+    {
+      "weekStart": "2026-02-09",
+      "meals": [
+        {
+          "recipeId": "Recipes/2. Soups/Street Corn Chicken Chili.md",
+          "plannedDate": "2026-02-09",
+          "mealType": "dinner",
+          "servings": 8
+        }
+      ],
+      "generatedAt": "2026-02-12T19:13:01.160Z"
+    },
+    {
+      "weekStart": "2026-02-02",
+      "meals": [
+        {
+          "recipeId": "Recipes/2. Soups/Creamy Taco Soup.md",
+          "plannedDate": "2026-02-02",
+          "mealType": "dinner",
+          "servings": 6
+        },
+        {
+          "recipeId": "Recipes/2. Soups/Street Corn Chicken Chili.md",
+          "plannedDate": "2026-02-03",
+          "mealType": "dinner",
+          "servings": 8
+        },
+        {
+          "recipeId": "Recipes/4. Mains/Chicken/Crockpot Tuscan Garlic Chicken Thighs with Spinach and Sun-Dried Tomatoes.md",
+          "plannedDate": "2026-02-04",
+          "mealType": "dinner",
+          "servings": 6
+        },
+        {
+          "recipeId": "Recipes/4. Mains/Chicken/Buffalo Chicken Stuffed Peppers (Dairy-Free, Low Carb).md",
+          "plannedDate": "2026-02-05",
+          "mealType": "dinner",
+          "servings": 6
+        },
+        {
+          "recipeId": "Recipes/4. Mains/Veg & Vegan/Japchae (Korean Glass Noodle Stir Fry).md",
+          "plannedDate": "2026-02-06",
+          "mealType": "dinner",
+          "servings": 6
+        }
+      ],
+      "generatedAt": "2026-02-09T01:53:22.816Z"
+    }
+  ],
+  "groceryStoreAssignments": {},
+  "ingredientCategories": {},
+  "settings": {
+    "recipeFolderPath": "Recipes",
+    "dinnersPerWeek": 5,
+    "leftoverLunches": true,
+    "planCategories": [
+      "Mains",
+      "Soups",
+      "Salads"
+    ]
+  }
+}
