@@ -521,18 +521,18 @@ export class ImportRecipeModal extends Modal {
 
 	onOpen(): void {
 		this.modalEl.addClass('meal-planner-modal', 'recipe-import');
-		this.titleEl.setText('Import recipe from url');
+		this.titleEl.setText('Import recipe from URL');
 
 		const { contentEl } = this;
 		contentEl.empty();
 
 		contentEl.createEl('p', {
-			text: 'Paste a recipe url or Pinterest pin url. The importer will try structured recipe data first.',
+			text: 'Paste a recipe URL or Pinterest pin URL. The importer will try structured recipe data first.',
 			cls: 'recipe-count',
 		});
 
 		new Setting(contentEl)
-			.setName('Recipe url')
+			.setName('Recipe URL')
 			.setDesc('Example: https://example.com/recipe or https://www.pinterest.com/pin/...')
 			.addText(text => {
 				text
@@ -565,7 +565,7 @@ export class ImportRecipeModal extends Modal {
 
 	private async importNow(): Promise<void> {
 		if (!this.url) {
-			new Notice('Please paste a url first.');
+			new Notice('Please paste a URL first.');
 			return;
 		}
 		if (!this.importBtn) return;

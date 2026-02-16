@@ -15,7 +15,10 @@ export interface ImportedRecipeDraft {
 	instructions: string[];
 }
 
-type JsonObj = Record<string, unknown>;
+type JsonScalar = string | number | boolean | null;
+type JsonObject = { [key: string]: JsonValue };
+type JsonArray = JsonValue[];
+type JsonValue = JsonScalar | JsonObject | JsonArray;
 
 export class WebRecipeParser {
 	static parseRecipeFromHtml(html: string, fallbackUrl: string): ImportedRecipeDraft | null {
@@ -36,7 +39,7 @@ export class WebRecipeParser {
 		const ingredients = this.normalizeStringList(recipe.recipeIngredient || recipe.ingredients);
 		const instructions = this.extractInstructions(recipe.recipeInstructions);
 
-		const nutrition = (recipe.nutrition || {}) as JsonObj;
+		const nutrition = this.isJsonObject(recipe.nutrition) ? recipe.nutrition : {};
 		const caloriesPerServing = this.extractNumberString(nutrition.calories);
 		const protein = this.extractNumberString(nutrition.proteinContent);
 		const netCarbs = this.extractNumberString(
@@ -105,9 +108,9 @@ export class WebRecipeParser {
 		return null;
 	}
 
-	private static extractRecipeObjects(html: string): JsonObj[] {
+	private static extractRecipeObjects(html: string): JsonObject[] {
 		const scripts = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || [];
-		const recipes: JsonObj[] = [];
+		const recipes: JsonObject[] = [];
 
 		for (const scriptTag of scripts) {
 			const body = scriptTag
@@ -123,7 +126,7 @@ export class WebRecipeParser {
 		return recipes;
 	}
 
-	private static walkForRecipeObjects(node: unknown, out: JsonObj[]): void {
+	private static walkForRecipeObjects(node: JsonValue | undefined, out: JsonObject[]): void {
 		if (!node) return;
 
 		if (Array.isArray(node)) {
@@ -131,8 +134,8 @@ export class WebRecipeParser {
 			return;
 		}
 
-		if (typeof node !== 'object') return;
-		const obj = node as JsonObj;
+		if (!this.isJsonObject(node)) return;
+		const obj = node;
 
 		if (this.isRecipeType(obj['@type'])) {
 			out.push(obj);
@@ -143,13 +146,18 @@ export class WebRecipeParser {
 		}
 	}
 
-	private static isRecipeType(typeVal: unknown): boolean {
+	private static isRecipeType(typeVal: JsonValue | undefined): boolean {
 		if (!typeVal) return false;
 		if (Array.isArray(typeVal)) return typeVal.some(t => this.isRecipeType(t));
-		return String(typeVal).toLowerCase().includes('recipe');
+		if (typeof typeVal === 'string') return typeVal.toLowerCase().includes('recipe');
+		if (this.isJsonObject(typeVal)) {
+			const nestedType = typeVal['@type'];
+			return this.isRecipeType(nestedType);
+		}
+		return false;
 	}
 
-	private static recipeScore(recipe: JsonObj): number {
+	private static recipeScore(recipe: JsonObject): number {
 		const ingredients = this.normalizeStringList(recipe.recipeIngredient || recipe.ingredients);
 		const instructions = this.extractInstructions(recipe.recipeInstructions);
 		let score = 0;
@@ -160,24 +168,28 @@ export class WebRecipeParser {
 		return score;
 	}
 
-	private static tryParseJsonLd(raw: string): unknown | null {
+	private static tryParseJsonLd(raw: string): JsonObject | JsonArray | null {
 		try {
-			return JSON.parse(raw);
+			const parsed = JSON.parse(raw) as JsonValue;
+			if (Array.isArray(parsed) || this.isJsonObject(parsed)) return parsed;
+			return null;
 		} catch {
 			// Some pages embed non-JSON-safe chars; strip control chars and retry.
 			try {
 				const cleaned = this.stripControlChars(raw);
-				return JSON.parse(cleaned);
+				const parsed = JSON.parse(cleaned) as JsonValue;
+				if (Array.isArray(parsed) || this.isJsonObject(parsed)) return parsed;
+				return null;
 			} catch {
 				return null;
 			}
 		}
 	}
 
-	private static extractInstructions(input: unknown): string[] {
+	private static extractInstructions(input: JsonValue | undefined): string[] {
 		const steps: string[] = [];
 
-		const walk = (node: unknown) => {
+		const walk = (node: JsonValue | undefined) => {
 			if (!node) return;
 			if (Array.isArray(node)) {
 				for (const item of node) walk(item);
@@ -188,8 +200,8 @@ export class WebRecipeParser {
 				if (s) steps.push(s);
 				return;
 			}
-			if (typeof node !== 'object') return;
-			const obj = node as JsonObj;
+			if (!this.isJsonObject(node)) return;
+			const obj = node;
 
 			if (typeof obj.text === 'string') {
 				const s = this.cleanText(obj.text);
@@ -204,13 +216,13 @@ export class WebRecipeParser {
 		return this.unique(steps);
 	}
 
-	private static normalizeStringList(value: unknown): string[] {
+	private static normalizeStringList(value: JsonValue | undefined): string[] {
 		if (!value) return [];
 
 		if (Array.isArray(value)) {
 			return this.unique(
 				value
-					.map(v => this.cleanText(String(v)))
+					.map(v => (typeof v === 'string' ? this.cleanText(v) : typeof v === 'number' ? String(v) : ''))
 					.filter(Boolean)
 			);
 		}
@@ -228,13 +240,24 @@ export class WebRecipeParser {
 		return [];
 	}
 
-	private static normalizeYield(yieldVal: unknown): string {
+	private static normalizeYield(yieldVal: JsonValue | undefined): string {
 		if (!yieldVal) return '';
-		if (Array.isArray(yieldVal) && yieldVal.length > 0) return this.cleanText(String(yieldVal[0]));
-		return this.cleanText(String(yieldVal));
+		if (typeof yieldVal === 'string') return this.cleanText(yieldVal);
+		if (typeof yieldVal === 'number') return String(yieldVal);
+		if (Array.isArray(yieldVal) && yieldVal.length > 0) {
+			const first = yieldVal[0];
+			if (typeof first === 'string') return this.cleanText(first);
+			if (typeof first === 'number') return String(first);
+		}
+		if (this.isJsonObject(yieldVal)) {
+			const text = yieldVal.text;
+			if (typeof text === 'string') return this.cleanText(text);
+			if (typeof text === 'number') return String(text);
+		}
+		return '';
 	}
 
-	private static formatDuration(isoDuration: unknown): string {
+	private static formatDuration(isoDuration: JsonValue | undefined): string {
 		if (!isoDuration || typeof isoDuration !== 'string') return '';
 		const s = isoDuration.trim();
 		if (!s.startsWith('P')) return s;
@@ -253,9 +276,26 @@ export class WebRecipeParser {
 		return parts.join(' ');
 	}
 
-	private static extractNumberString(value: unknown): string {
+	private static extractNumberString(value: JsonValue | undefined): string {
 		if (!value) return '';
-		const s = String(value);
+		if (typeof value === 'number') return String(value);
+		if (typeof value === 'boolean') return '';
+		if (Array.isArray(value)) {
+			for (const item of value) {
+				const parsed = this.extractNumberString(item);
+				if (parsed) return parsed;
+			}
+			return '';
+		}
+		if (this.isJsonObject(value)) {
+			const candidates = ['value', 'text', '@value', 'name'];
+			for (const key of candidates) {
+				const parsed = this.extractNumberString(value[key]);
+				if (parsed) return parsed;
+			}
+			return '';
+		}
+		const s = value;
 		const m = s.match(/([\d.]+)/);
 		return m ? m[1] : '';
 	}
@@ -322,6 +362,10 @@ export class WebRecipeParser {
 
 	private static unique(values: string[]): string[] {
 		return [...new Set(values.filter(Boolean))];
+	}
+
+	private static isJsonObject(value: JsonValue | undefined): value is JsonObject {
+		return typeof value === 'object' && value !== null && !Array.isArray(value);
 	}
 
 	private static stripControlChars(raw: string): string {

@@ -13,7 +13,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl).setName('Meal planner settings').setHeading();
+		new Setting(containerEl).setName('Meal planner options').setHeading();
 
 		new Setting(containerEl)
 			.setName('Recipe folder path')

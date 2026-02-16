@@ -59,7 +59,7 @@ export class MealPlanView extends ItemView {
 			this.plugin.browseRecipes();
 		});
 
-		const importBtn = actions.createEl('button', { text: 'Import url' });
+		const importBtn = actions.createEl('button', { text: 'Import URL' });
 		importBtn.addEventListener('click', () => {
 			this.plugin.openImportRecipeModal();
 		});

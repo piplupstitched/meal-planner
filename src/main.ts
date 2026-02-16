@@ -44,19 +44,25 @@ export default class MealPlannerPlugin extends Plugin {
 		this.addCommand({
 			id: 'view-grocery-list',
 			name: 'View grocery list',
-			callback: () => this.showGroceryList(),
+			callback: () => {
+				this.showGroceryList();
+			},
 		});
 
 		this.addCommand({
 			id: 'browse-recipes',
 			name: 'Browse recipes',
-			callback: () => this.browseRecipes(),
+			callback: () => {
+				this.browseRecipes();
+			},
 		});
 
 		this.addCommand({
 			id: 'import-recipe-from-url',
-			name: 'Import recipe from url',
-			callback: () => this.openImportRecipeModal(),
+			name: 'Import recipe from URL',
+			callback: () => {
+				this.openImportRecipeModal();
+			},
 		});
 
 		this.addCommand({
@@ -372,7 +378,7 @@ export default class MealPlannerPlugin extends Plugin {
 		}
 
 		if (leaf) {
-			workspace.revealLeaf(leaf);
+			void workspace.revealLeaf(leaf);
 			// Always re-render after revealing to pick up latest data
 			const view = leaf.view as MealPlanView;
 			if (view && typeof view.render === 'function') {
