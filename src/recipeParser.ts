@@ -188,7 +188,7 @@ export class RecipeParser {
 		const cleanRaw = raw.replace(/\s{2,}/g, ' ').trim();
 
 		// Pattern: optional quantity (number/fraction), optional unit, then name
-		const quantityPattern = /^([\d½¼¾⅓⅔⅛\/\-–]+(?:\s*[\d½¼¾⅓⅔⅛\/\-–]*)?)\s+/;
+		const quantityPattern = /^([\d½¼¾⅓⅔⅛/–-–]+(?:\s*[\d½¼¾⅓⅔⅛/–-–]*)?)\s+/;
 		const quantityMatch = cleanRaw.match(quantityPattern);
 
 		if (!quantityMatch) {
@@ -261,7 +261,7 @@ export class RecipeParser {
 		if (!value) return 0;
 		const cleaned = String(value).replace(/[~g]/g, '');
 		// If range like "380–420" or "380-420", take the average
-		const rangeMatch = cleaned.match(/([\d.]+)\s*[–\-]\s*([\d.]+)/);
+		const rangeMatch = cleaned.match(/([\d.]+)\s*[–-]\s*([\d.]+)/);
 		if (rangeMatch) {
 			return Math.round((parseFloat(rangeMatch[1]) + parseFloat(rangeMatch[2])) / 2);
 		}
@@ -279,3 +279,4 @@ export class RecipeParser {
 		return [];
 	}
 }
+

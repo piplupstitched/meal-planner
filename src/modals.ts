@@ -1,12 +1,10 @@
-import { App, Modal, Setting, Notice, FuzzySuggestModal, requestUrl } from 'obsidian';
+import { App, Modal, Setting, Notice, FuzzySuggestModal, requestUrl, TFile } from 'obsidian';
 import type MealPlannerPlugin from './main';
 import {
 	ParsedRecipe,
 	GroceryItem,
 	GroceryCategory,
 	StoreName,
-	PlannedMeal,
-	MealType,
 } from './types';
 
 // ── Recipe Browser Modal ──
@@ -26,7 +24,7 @@ export class RecipeBrowserModal extends Modal {
 
 	onOpen(): void {
 		this.modalEl.addClass('meal-planner-modal', 'recipe-browser');
-		this.titleEl.setText('Select Meals');
+		this.titleEl.setText('Select meals');
 		this.render();
 	}
 
@@ -47,7 +45,7 @@ export class RecipeBrowserModal extends Modal {
 			helperParts.push(`${this.addedCount} added this session`);
 		}
 		contentEl.createEl('p', {
-			text: helperParts.join(' · '),
+			text: helperParts.join(' | '),
 			cls: 'recipe-count',
 		});
 
@@ -59,12 +57,11 @@ export class RecipeBrowserModal extends Modal {
 		searchInput.setAttribute('type', 'search');
 		searchInput.setAttribute('placeholder', 'Search recipes...');
 		searchInput.value = this.filterText;
-		searchInput.addEventListener('keydown', (e) => {
-			e.stopPropagation();
-		});
-		searchInput.addEventListener('keyup', (e) => {
-			e.stopPropagation();
-		});
+		const stopHotkeyPropagation = (e: Event) => e.stopPropagation();
+		searchInput.addEventListener('keydown', stopHotkeyPropagation);
+		searchInput.addEventListener('keyup', stopHotkeyPropagation);
+		searchInput.addEventListener('keypress', stopHotkeyPropagation);
+		searchInput.addEventListener('beforeinput', stopHotkeyPropagation);
 		searchInput.addEventListener('input', () => {
 			this.filterText = searchInput.value;
 			this.renderList(listContainer);
@@ -79,9 +76,9 @@ export class RecipeBrowserModal extends Modal {
 			catSelect.createEl('option', { value: cat, text: cat });
 		}
 		catSelect.value = this.filterCategory;
-		catSelect.addEventListener('keydown', (e) => {
-			e.stopPropagation();
-		});
+		catSelect.addEventListener('keydown', stopHotkeyPropagation);
+		catSelect.addEventListener('keyup', stopHotkeyPropagation);
+		catSelect.addEventListener('keypress', stopHotkeyPropagation);
 		catSelect.addEventListener('change', () => {
 			this.filterCategory = catSelect.value;
 			this.renderList(listContainer);
@@ -157,15 +154,17 @@ export class RecipeBrowserModal extends Modal {
 			if (stats.timesCooked > 0) {
 				parts.push(`cooked ${stats.timesCooked}x`);
 			}
-			meta.setText(parts.join(' · '));
+			meta.setText(parts.join(' | '));
 
 			// Add to plan button
-			const addBtn = row.createEl('button', { text: '+ Plan', cls: 'recipe-add-btn' });
-			addBtn.addEventListener('click', async () => {
-				await this.plugin.addRecipeToPlan(recipe);
-				this.addedCount++;
-				new Notice(`Added "${recipe.title}" to this week's plan.`);
-				this.render();
+			const addBtn = row.createEl('button', { text: '+ plan', cls: 'recipe-add-btn' });
+			addBtn.addEventListener('click', () => {
+				void (async () => {
+					await this.plugin.addRecipeToPlan(recipe);
+					this.addedCount++;
+					new Notice(`Added "${recipe.title}" to this week's plan.`);
+					this.render();
+				})().catch(() => {});
 			});
 		}
 	}
@@ -190,7 +189,7 @@ export class GroceryListModal extends Modal {
 
 	onOpen(): void {
 		this.modalEl.addClass('meal-planner-modal', 'grocery-list');
-		this.titleEl.setText('Grocery List');
+		this.titleEl.setText('Grocery list');
 		this.render();
 	}
 
@@ -206,7 +205,7 @@ export class GroceryListModal extends Modal {
 		// Toolbar
 		const toolbar = contentEl.createDiv('grocery-toolbar');
 		const groupToggle = toolbar.createEl('button', {
-			text: this.groupMode === 'category' ? 'Group by Store' : 'Group by Category',
+			text: this.groupMode === 'category' ? 'Group by store' : 'Group by category',
 		});
 		groupToggle.addEventListener('click', () => {
 			this.groupMode = this.groupMode === 'category' ? 'store' : 'category';
@@ -218,9 +217,9 @@ export class GroceryListModal extends Modal {
 			this.copyToClipboard();
 		});
 
-		const saveBtn = toolbar.createEl('button', { text: 'Save to Vault' });
+		const saveBtn = toolbar.createEl('button', { text: 'Save to vault' });
 		saveBtn.addEventListener('click', () => {
-			this.saveToVault();
+			void this.saveToVault();
 		});
 
 		// Todoist button (only if API token configured)
@@ -228,7 +227,7 @@ export class GroceryListModal extends Modal {
 		if (token) {
 			const todoistBtn = toolbar.createEl('button', { text: 'Send to Todoist', cls: 'grocery-todoist-btn' });
 			todoistBtn.addEventListener('click', () => {
-				this.sendToTodoist();
+				void this.sendToTodoist();
 			});
 		}
 
@@ -272,7 +271,7 @@ export class GroceryListModal extends Modal {
 
 			const qty = item.quantity ? `${item.quantity}${item.unit ? ' ' + item.unit : ''}` : '';
 			const text = qty ? `${qty} ${item.name}` : item.name;
-			const nameEl = row.createEl('span', { text, cls: 'grocery-name' });
+			row.createEl('span', { text, cls: 'grocery-name' });
 
 			if (item.fromRecipes.length > 0) {
 				row.createEl('span', {
@@ -285,12 +284,12 @@ export class GroceryListModal extends Modal {
 			const storeSelect = row.createEl('select', { cls: 'grocery-store' });
 			const stores: StoreName[] = ['Any', 'Costco', "Sam's", 'Kroger'];
 			for (const s of stores) {
-				const opt = storeSelect.createEl('option', { value: s, text: s });
+				storeSelect.createEl('option', { value: s, text: s });
 			}
 			storeSelect.value = item.store;
-			storeSelect.addEventListener('change', async () => {
+			storeSelect.addEventListener('change', () => {
 				item.store = storeSelect.value as StoreName;
-				await this.plugin.dataStore.setStoreAssignment(item.name, item.store);
+				void this.plugin.dataStore.setStoreAssignment(item.name, item.store);
 			});
 		}
 	}
@@ -298,11 +297,11 @@ export class GroceryListModal extends Modal {
 	private categoryLabel(cat: GroceryCategory): string {
 		const labels: Record<GroceryCategory, string> = {
 			produce: 'Produce',
-			protein: 'Protein & Meat',
-			dairy: 'Dairy & Eggs',
-			bakery: 'Bakery & Bread',
+			protein: 'Protein and meat',
+			dairy: 'Dairy and eggs',
+			bakery: 'Bakery and bread',
 			frozen: 'Frozen',
-			spices: 'Spices & Seasoning',
+			spices: 'Spices and seasoning',
 			pantry: 'Pantry',
 			other: 'Other',
 		};
@@ -313,8 +312,9 @@ export class GroceryListModal extends Modal {
 
 	private copyToClipboard(): void {
 		const markdown = this.buildMarkdown();
-		navigator.clipboard.writeText(markdown);
-		new Notice('Grocery list copied to clipboard!');
+		void navigator.clipboard.writeText(markdown).then(() => {
+			new Notice('Grocery list copied to clipboard.');
+		}).catch(() => {});
 	}
 
 	// ── Export: Save to Vault ──
@@ -324,8 +324,8 @@ export class GroceryListModal extends Modal {
 		const path = this.plugin.dataStore.getData().settings.groceryExportPath;
 
 		const existing = this.app.vault.getAbstractFileByPath(path);
-		if (existing) {
-			await this.app.vault.modify(existing as any, markdown);
+		if (existing instanceof TFile) {
+			await this.app.vault.modify(existing, markdown);
 		} else {
 			await this.app.vault.create(path, markdown);
 		}
@@ -339,7 +339,7 @@ export class GroceryListModal extends Modal {
 		const settings = this.plugin.dataStore.getData().settings;
 		const token = settings.todoistApiToken;
 		if (!token) {
-			new Notice('Todoist API token not configured. Set it in Meal Planner settings.');
+			new Notice('Todoist API token not configured. Set it in meal planner settings.');
 			return;
 		}
 
@@ -386,7 +386,7 @@ export class GroceryListModal extends Modal {
 				}
 			}
 
-			new Notice(`Sent ${addedCount} items to Todoist project "${settings.todoistProjectName}"!`);
+			new Notice(`Sent ${addedCount} items to Todoist project "${settings.todoistProjectName}".`);
 		} catch (e) {
 			console.error('Todoist export failed:', e);
 			new Notice(`Todoist export failed: ${(e as Error).message}`);
@@ -473,7 +473,7 @@ export class GroceryListModal extends Modal {
 	// ── Shared markdown builder ──
 
 	private buildMarkdown(): string {
-		const lines: string[] = ['# Grocery List', ''];
+		const lines: string[] = ['# Grocery list', ''];
 
 		const plan = this.plugin.dataStore.getCurrentWeekPlan();
 		if (plan) {
@@ -521,18 +521,18 @@ export class ImportRecipeModal extends Modal {
 
 	onOpen(): void {
 		this.modalEl.addClass('meal-planner-modal', 'recipe-import');
-		this.titleEl.setText('Import Recipe from URL');
+		this.titleEl.setText('Import recipe from url');
 
 		const { contentEl } = this;
 		contentEl.empty();
 
 		contentEl.createEl('p', {
-			text: 'Paste a recipe URL or Pinterest pin URL. The importer will try structured recipe data first.',
+			text: 'Paste a recipe url or Pinterest pin url. The importer will try structured recipe data first.',
 			cls: 'recipe-count',
 		});
 
 		new Setting(contentEl)
-			.setName('Recipe URL')
+			.setName('Recipe url')
 			.setDesc('Example: https://example.com/recipe or https://www.pinterest.com/pin/...')
 			.addText(text => {
 				text
@@ -552,7 +552,7 @@ export class ImportRecipeModal extends Modal {
 			});
 
 		const actions = contentEl.createDiv('recipe-import-actions');
-		this.importBtn = actions.createEl('button', { text: 'Import Recipe' });
+		this.importBtn = actions.createEl('button', { text: 'Import recipe' });
 		this.importBtn.addEventListener('click', () => {
 			void this.importNow();
 		});
@@ -565,7 +565,7 @@ export class ImportRecipeModal extends Modal {
 
 	private async importNow(): Promise<void> {
 		if (!this.url) {
-			new Notice('Please paste a URL first.');
+			new Notice('Please paste a url first.');
 			return;
 		}
 		if (!this.importBtn) return;
@@ -615,3 +615,4 @@ export class RecipeSuggestModal extends FuzzySuggestModal<ParsedRecipe> {
 		this.onChoose(recipe);
 	}
 }
+

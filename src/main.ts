@@ -1,5 +1,5 @@
 import { Plugin, Notice, WorkspaceLeaf, TFile, requestUrl } from 'obsidian';
-import { ParsedRecipe, PlannedMeal, WeeklyPlan, MealType } from './types';
+import { ParsedRecipe, PlannedMeal } from './types';
 import { RecipeParser } from './recipeParser';
 import { DataStore } from './dataStore';
 import { MealPlanner } from './mealPlanner';
@@ -32,13 +32,13 @@ export default class MealPlannerPlugin extends Plugin {
 		this.addCommand({
 			id: 'open-meal-plan',
 			name: 'Open meal plan',
-			callback: () => this.activateView(),
+			callback: () => { void this.activateView(); },
 		});
 
 		this.addCommand({
 			id: 'generate-meal-plan',
 			name: 'Generate weekly meal plan',
-			callback: () => this.generateMealPlan(),
+			callback: () => { void this.generateMealPlan(); },
 		});
 
 		this.addCommand({
@@ -55,38 +55,38 @@ export default class MealPlannerPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'import-recipe-from-url',
-			name: 'Import recipe from URL',
+			name: 'Import recipe from url',
 			callback: () => this.openImportRecipeModal(),
 		});
 
 		this.addCommand({
 			id: 'list-parsed-recipes',
 			name: 'List all parsed recipes',
-			callback: () => this.listParsedRecipes(),
+			callback: () => { void this.listParsedRecipes(); },
 		});
 
 		this.addCommand({
 			id: 'refresh-recipes',
 			name: 'Refresh recipe index',
-			callback: () => this.refreshRecipes(),
+			callback: () => { void this.refreshRecipes(); },
 		});
 
 		// Settings tab
 		this.addSettingTab(new MealPlannerSettingTab(this.app, this));
 
 		// Add ribbon icon
-		this.addRibbonIcon('utensils', 'Meal Planner', () => {
-			this.activateView();
+		this.addRibbonIcon('utensils', 'Meal planner', () => {
+			void this.activateView();
 		});
 
 		// Load recipes on startup (after vault is ready)
-		this.app.workspace.onLayoutReady(async () => {
-			await this.refreshRecipes();
+		this.app.workspace.onLayoutReady(() => {
+			void this.refreshRecipes();
 		});
 	}
 
 	onunload(): void {
-		this.app.workspace.detachLeavesOfType(MEAL_PLAN_VIEW_TYPE);
+		// Keep user-arranged leaves in place.
 	}
 
 	// ── Core Operations ──
@@ -123,7 +123,7 @@ export default class MealPlannerPlugin extends Plugin {
 		}
 	}
 
-	async showGroceryList(): Promise<void> {
+	showGroceryList(): void {
 		const plan = this.dataStore.getCurrentWeekPlan();
 		if (!plan || plan.meals.length === 0) {
 			new Notice('No meal plan for this week. Generate one first.');
@@ -144,9 +144,9 @@ export default class MealPlannerPlugin extends Plugin {
 	browseRecipes(): void {
 		if (this.cachedRecipes.length === 0) {
 			new Notice('No recipes loaded. Refreshing...');
-			this.refreshRecipes().then(() => {
+			void this.refreshRecipes().then(() => {
 				new RecipeBrowserModal(this.app, this).open();
-			});
+			}).catch(() => {});
 			return;
 		}
 		new RecipeBrowserModal(this.app, this).open();
@@ -158,8 +158,8 @@ export default class MealPlannerPlugin extends Plugin {
 
 	async importRecipeFromUrl(rawUrl: string): Promise<TFile> {
 		const url = rawUrl.trim();
-		if (!/^https?:\/\//i.test(url)) {
-			throw new Error('Please enter a valid http(s) URL.');
+		if (!this.isHttpUrl(url)) {
+			throw new Error('Please enter a valid http(s) url.');
 		}
 
 		const primaryHtml = await this.fetchHtml(url);
@@ -204,9 +204,9 @@ export default class MealPlannerPlugin extends Plugin {
 		});
 
 		new Notice(`Found ${this.cachedRecipes.length} recipes. Check console for details.`);
-		console.log('=== Parsed Recipes ===');
-		lines.forEach(l => console.log(l));
-		console.log('=== End ===');
+		console.debug('=== Parsed recipes ===');
+		lines.forEach(l => console.debug(l));
+		console.debug('=== End ===');
 	}
 
 	// ── Plan Manipulation ──
@@ -253,63 +253,67 @@ export default class MealPlannerPlugin extends Plugin {
 		this.refreshView();
 	}
 
-	async swapRecipe(meal: PlannedMeal): Promise<void> {
-		new RecipeSuggestModal(this.app, this, async (recipe) => {
-			const plan = this.dataStore.getCurrentWeekPlan();
-			if (!plan) return;
+	swapRecipe(meal: PlannedMeal): void {
+		new RecipeSuggestModal(this.app, this, (recipe) => {
+			void (async () => {
+				const plan = this.dataStore.getCurrentWeekPlan();
+				if (!plan) return;
 
-			const idx = plan.meals.findIndex(
-				m => m.recipeId === meal.recipeId && m.plannedDate === meal.plannedDate && m.mealType === meal.mealType
-			);
-			if (idx >= 0) {
-				const oldRecipeId = plan.meals[idx].recipeId;
-				const oldDate = plan.meals[idx].plannedDate;
+				const idx = plan.meals.findIndex(
+					m => m.recipeId === meal.recipeId && m.plannedDate === meal.plannedDate && m.mealType === meal.mealType
+				);
+				if (idx >= 0) {
+					const oldRecipeId = plan.meals[idx].recipeId;
+					const oldDate = plan.meals[idx].plannedDate;
 
-				plan.meals[idx] = {
-					...plan.meals[idx],
-					recipeId: recipe.id,
-					servings: recipe.servings,
-				};
+					plan.meals[idx] = {
+						...plan.meals[idx],
+						recipeId: recipe.id,
+						servings: recipe.servings,
+					};
 
-				// Update associated leftovers if this was a dinner
-				if (!meal.isLeftover) {
-					// Remove old leftovers
-					plan.meals = plan.meals.filter(
-						m => !(m.isLeftover && m.leftoverSourceDate === oldDate && m.recipeId === oldRecipeId)
-					);
+					// Update associated leftovers if this was a dinner
+					if (!meal.isLeftover) {
+						// Remove old leftovers
+						plan.meals = plan.meals.filter(
+							m => !(m.isLeftover && m.leftoverSourceDate === oldDate && m.recipeId === oldRecipeId)
+						);
 
-					// Generate new leftovers if the new recipe has enough servings
-					const settings = this.dataStore.getData().settings;
-					if (settings.leftoverLunches && recipe.servings >= 4) {
-						const nextDay = new Date(oldDate + 'T00:00:00');
-						nextDay.setDate(nextDay.getDate() + 1);
-						const nextDayStr = this.dataStore.formatDate(nextDay);
-						const leftoverServings = recipe.servings >= 6 ? 2 : 1;
+						// Generate new leftovers if the new recipe has enough servings
+						const settings = this.dataStore.getData().settings;
+						if (settings.leftoverLunches && recipe.servings >= 4) {
+							const nextDay = new Date(oldDate + 'T00:00:00');
+							nextDay.setDate(nextDay.getDate() + 1);
+							const nextDayStr = this.dataStore.formatDate(nextDay);
+							const leftoverServings = recipe.servings >= 6 ? 2 : 1;
 
-						plan.meals.push({
-							recipeId: recipe.id,
-							plannedDate: nextDayStr,
-							mealType: 'lunch',
-							servings: leftoverServings,
-							isLeftover: true,
-							leftoverSourceDate: oldDate,
+							plan.meals.push({
+								recipeId: recipe.id,
+								plannedDate: nextDayStr,
+								mealType: 'lunch',
+								servings: leftoverServings,
+								isLeftover: true,
+								leftoverSourceDate: oldDate,
+							});
+						}
+
+						// Re-sort
+						plan.meals.sort((a, b) => {
+							const dc = a.plannedDate.localeCompare(b.plannedDate);
+							if (dc !== 0) return dc;
+							if (a.isLeftover && !b.isLeftover) return 1;
+							if (!a.isLeftover && b.isLeftover) return -1;
+							return 0;
 						});
 					}
 
-					// Re-sort
-					plan.meals.sort((a, b) => {
-						const dc = a.plannedDate.localeCompare(b.plannedDate);
-						if (dc !== 0) return dc;
-						if (a.isLeftover && !b.isLeftover) return 1;
-						if (!a.isLeftover && b.isLeftover) return -1;
-						return 0;
-					});
+					await this.dataStore.saveWeeklyPlan(plan);
+					new Notice(`Swapped to "${recipe.title}"`);
+					this.refreshView();
 				}
-
-				await this.dataStore.saveWeeklyPlan(plan);
-				new Notice(`Swapped to "${recipe.title}"`);
-				this.refreshView();
-			}
+			})().catch((e: unknown) => {
+				new Notice(`Failed to swap recipe: ${(e as Error).message}`);
+			});
 		}).open();
 	}
 
@@ -372,7 +376,7 @@ export default class MealPlannerPlugin extends Plugin {
 			// Always re-render after revealing to pick up latest data
 			const view = leaf.view as MealPlanView;
 			if (view && typeof view.render === 'function') {
-				await view.render();
+				view.render();
 			}
 		}
 	}
@@ -390,7 +394,7 @@ export default class MealPlannerPlugin extends Plugin {
 	openRecipeFile(filePath: string): void {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (file instanceof TFile) {
-			this.app.workspace.getLeaf(false).openFile(file);
+			void this.app.workspace.getLeaf(false).openFile(file);
 		}
 	}
 
@@ -417,7 +421,7 @@ export default class MealPlannerPlugin extends Plugin {
 		const baseName = this.toSafeFileName(draft.title || 'Imported Recipe');
 		const availablePath = this.app.vault.getAvailablePath(`${folder}/${baseName}`, 'md');
 		const markdown = this.buildImportedRecipeMarkdown(draft);
-		return await this.app.vault.create(availablePath, markdown);
+		return this.app.vault.create(availablePath, markdown);
 	}
 
 	private getImportFolderForMealType(mealTypes: string[]): string {
@@ -497,5 +501,14 @@ export default class MealPlannerPlugin extends Plugin {
 
 	private escapeYaml(value: string): string {
 		return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+	}
+
+	private isHttpUrl(url: string): boolean {
+		try {
+			const parsed = new URL(url);
+			return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+		} catch {
+			return false;
+		}
 	}
 }

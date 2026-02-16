@@ -1,12 +1,11 @@
 import {
 	ItemView,
 	WorkspaceLeaf,
-	setIcon,
 	Notice,
 	Menu,
 } from 'obsidian';
 import type MealPlannerPlugin from './main';
-import { ParsedRecipe, PlannedMeal, GroceryItem, MealType, WeeklyPlan } from './types';
+import { PlannedMeal } from './types';
 
 // ── Constants ──
 
@@ -17,6 +16,7 @@ export const MEAL_PLAN_VIEW_TYPE = 'meal-planner-view';
 export class MealPlanView extends ItemView {
 	plugin: MealPlannerPlugin;
 	private dragSourceIndex: number | null = null;
+	private clearConfirmUntil = 0;
 
 	constructor(leaf: WorkspaceLeaf, plugin: MealPlannerPlugin) {
 		super(leaf);
@@ -28,57 +28,62 @@ export class MealPlanView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return 'Meal Plan';
+		return 'Meal plan';
 	}
 
 	getIcon(): string {
 		return 'utensils';
 	}
 
-	async onOpen(): Promise<void> {
-		await this.render();
+	onOpen(): void {
+		this.render();
 	}
 
-	async render(): Promise<void> {
+	render(): void {
 		const container = this.containerEl.children[1] as HTMLElement;
 		container.empty();
 		container.addClass('meal-planner-sidebar');
 
 		// Header
 		const header = container.createDiv('meal-planner-header');
-		header.createEl('h3', { text: 'Meal Plan' });
+		header.createEl('h3', { text: 'Meal plan' });
 
 		const actions = header.createDiv('meal-planner-actions');
-		const genBtn = actions.createEl('button', { text: 'Generate Plan' });
+		const genBtn = actions.createEl('button', { text: 'Generate plan' });
 		genBtn.addEventListener('click', () => {
-			this.plugin.generateMealPlan();
+			void this.plugin.generateMealPlan();
 		});
 
-		const manualBtn = actions.createEl('button', { text: 'Select Meals' });
+		const manualBtn = actions.createEl('button', { text: 'Select meals' });
 		manualBtn.addEventListener('click', () => {
 			this.plugin.browseRecipes();
 		});
 
-		const importBtn = actions.createEl('button', { text: 'Import URL' });
+		const importBtn = actions.createEl('button', { text: 'Import url' });
 		importBtn.addEventListener('click', () => {
 			this.plugin.openImportRecipeModal();
 		});
 
-		const clearBtn = actions.createEl('button', { text: 'Clear Plan' });
-		clearBtn.addEventListener('click', async () => {
-			const ok = window.confirm('Clear all meals for the current week?');
-			if (!ok) return;
-			await this.plugin.clearCurrentWeekPlan();
+		const clearBtn = actions.createEl('button', { text: 'Clear plan' });
+		clearBtn.addEventListener('click', () => {
+			const now = Date.now();
+			if (now > this.clearConfirmUntil) {
+				this.clearConfirmUntil = now + 3000;
+				new Notice('Click clear plan again within 3 seconds to confirm.');
+				return;
+			}
+			this.clearConfirmUntil = 0;
+			void this.plugin.clearCurrentWeekPlan();
 		});
 
-		const groceryBtn = actions.createEl('button', { text: 'Grocery List' });
+		const groceryBtn = actions.createEl('button', { text: 'Grocery list' });
 		groceryBtn.addEventListener('click', () => {
 			this.plugin.showGroceryList();
 		});
 
 		// Season label
 		const season = this.plugin.planner.seasonal.getSeasonLabel();
-		const seasonEl = header.createEl('span', {
+		header.createEl('span', {
 			text: season,
 			cls: `meal-season meal-season-${season.toLowerCase()}`,
 		});
@@ -87,7 +92,7 @@ export class MealPlanView extends ItemView {
 		const plan = this.plugin.dataStore.getCurrentWeekPlan();
 		if (!plan || plan.meals.length === 0) {
 			container.createEl('p', {
-				text: 'No meal plan for this week. Click "Generate Plan" or "Select Meals" to create one.',
+				text: 'No meal plan for this week. Click "Generate plan" or "Select meals" to create one.',
 				cls: 'meal-planner-empty',
 			});
 			return;
@@ -129,21 +134,23 @@ export class MealPlanView extends ItemView {
 				// Checkbox
 				const checkbox = row.createEl('input', { type: 'checkbox' });
 				checkbox.checked = isCooked;
-				checkbox.addEventListener('change', async () => {
-					if (checkbox.checked) {
-						await this.plugin.dataStore.markMealCooked(
-							meal.recipeId,
-							meal.plannedDate,
-							meal.mealType
-						);
-						new Notice(`Leftover "${recipe.title}" eaten!`);
-					} else {
-						await this.plugin.dataStore.removeCookedMeal(
-							meal.recipeId,
-							meal.plannedDate
-						);
-					}
-					await this.render();
+				checkbox.addEventListener('change', () => {
+					void (async () => {
+						if (checkbox.checked) {
+							await this.plugin.dataStore.markMealCooked(
+								meal.recipeId,
+								meal.plannedDate,
+								meal.mealType
+							);
+							new Notice(`Leftover "${recipe.title}" eaten.`);
+						} else {
+							await this.plugin.dataStore.removeCookedMeal(
+								meal.recipeId,
+								meal.plannedDate
+							);
+						}
+						this.render();
+					})().catch(() => {});
 				});
 
 				const info = row.createDiv('meal-info');
@@ -179,7 +186,7 @@ export class MealPlanView extends ItemView {
 
 			// ── Drag handle ──
 			const dragHandle = row.createDiv('meal-drag-handle');
-			dragHandle.innerHTML = '&#x2630;'; // hamburger icon ☰
+			dragHandle.setText('\u2630');
 			dragHandle.setAttribute('aria-label', 'Drag to reorder');
 
 			// Make row draggable
@@ -221,33 +228,35 @@ export class MealPlanView extends ItemView {
 				row.removeClass('meal-drag-over-above', 'meal-drag-over-below');
 			});
 
-			row.addEventListener('drop', async (e: DragEvent) => {
+			row.addEventListener('drop', (e: DragEvent) => {
 				e.preventDefault();
 				row.removeClass('meal-drag-over-above', 'meal-drag-over-below');
 				if (this.dragSourceIndex === null || this.dragSourceIndex === mealIndex) return;
 
-				await this.swapMealDays(this.dragSourceIndex, mealIndex);
+				void this.swapMealDays(this.dragSourceIndex, mealIndex);
 				this.dragSourceIndex = null;
 			});
 
 			// Checkbox
 			const checkbox = row.createEl('input', { type: 'checkbox' });
 			checkbox.checked = isCooked;
-			checkbox.addEventListener('change', async () => {
-				if (checkbox.checked) {
-					await this.plugin.dataStore.markMealCooked(
-						meal.recipeId,
-						meal.plannedDate,
-						meal.mealType
-					);
-					new Notice(`Marked "${recipe.title}" as cooked!`);
-				} else {
-					await this.plugin.dataStore.removeCookedMeal(
-						meal.recipeId,
-						meal.plannedDate
-					);
-				}
-				await this.render();
+			checkbox.addEventListener('change', () => {
+				void (async () => {
+					if (checkbox.checked) {
+						await this.plugin.dataStore.markMealCooked(
+							meal.recipeId,
+							meal.plannedDate,
+							meal.mealType
+						);
+						new Notice(`Marked "${recipe.title}" as cooked.`);
+					} else {
+						await this.plugin.dataStore.removeCookedMeal(
+							meal.recipeId,
+							meal.plannedDate
+						);
+					}
+					this.render();
+				})().catch(() => {});
 			});
 
 			const info = row.createDiv('meal-info');
@@ -312,7 +321,7 @@ export class MealPlanView extends ItemView {
 				menu.addItem(item => {
 					item.setTitle('Remove from plan');
 					item.setIcon('trash');
-					item.onClick(() => this.plugin.removeMealFromPlan(meal));
+					item.onClick(() => { void this.plugin.removeMealFromPlan(meal); });
 				});
 				menu.showAtMouseEvent(e);
 			});
@@ -357,7 +366,7 @@ export class MealPlanView extends ItemView {
 
 		// Drag hint
 		summary.createEl('div', {
-			text: 'Drag meals to reorder days',
+			text: 'Drag meals to reorder days.',
 			cls: 'drag-hint',
 		});
 	}
@@ -412,7 +421,7 @@ export class MealPlanView extends ItemView {
 		});
 
 		await this.plugin.dataStore.saveWeeklyPlan(plan);
-		await this.render();
+		this.render();
 	}
 
 	private isMealCooked(meal: PlannedMeal): boolean {
@@ -421,5 +430,5 @@ export class MealPlanView extends ItemView {
 		);
 	}
 
-	async onClose(): Promise<void> {}
+	onClose(): void {}
 }
