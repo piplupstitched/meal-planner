@@ -15,7 +15,7 @@ export interface ImportedRecipeDraft {
 	instructions: string[];
 }
 
-type JsonObj = Record<string, any>;
+type JsonObj = Record<string, unknown>;
 
 export class WebRecipeParser {
 	static parseRecipeFromHtml(html: string, fallbackUrl: string): ImportedRecipeDraft | null {
@@ -94,7 +94,7 @@ export class WebRecipeParser {
 			}
 		}
 
-		const escapedLinkMatches = html.match(/"link":"(https?:\\\/\\\/[^"]+)"/gi) || [];
+		const escapedLinkMatches = html.match(/"link":"(https?:[^"]+)"/gi) || [];
 		for (const raw of escapedLinkMatches) {
 			const m = raw.match(/"link":"([^"]+)"/i);
 			if (!m?.[1]) continue;
@@ -123,7 +123,7 @@ export class WebRecipeParser {
 		return recipes;
 	}
 
-	private static walkForRecipeObjects(node: any, out: JsonObj[]): void {
+	private static walkForRecipeObjects(node: unknown, out: JsonObj[]): void {
 		if (!node) return;
 
 		if (Array.isArray(node)) {
@@ -132,17 +132,18 @@ export class WebRecipeParser {
 		}
 
 		if (typeof node !== 'object') return;
+		const obj = node as JsonObj;
 
-		if (this.isRecipeType(node['@type'])) {
-			out.push(node);
+		if (this.isRecipeType(obj['@type'])) {
+			out.push(obj);
 		}
 
-		for (const value of Object.values(node)) {
+		for (const value of Object.values(obj)) {
 			this.walkForRecipeObjects(value, out);
 		}
 	}
 
-	private static isRecipeType(typeVal: any): boolean {
+	private static isRecipeType(typeVal: unknown): boolean {
 		if (!typeVal) return false;
 		if (Array.isArray(typeVal)) return typeVal.some(t => this.isRecipeType(t));
 		return String(typeVal).toLowerCase().includes('recipe');
@@ -159,13 +160,13 @@ export class WebRecipeParser {
 		return score;
 	}
 
-	private static tryParseJsonLd(raw: string): any | null {
+	private static tryParseJsonLd(raw: string): unknown | null {
 		try {
 			return JSON.parse(raw);
 		} catch {
 			// Some pages embed non-JSON-safe chars; strip control chars and retry.
 			try {
-				const cleaned = raw.replace(/[\u0000-\u001F]+/g, '');
+				const cleaned = this.stripControlChars(raw);
 				return JSON.parse(cleaned);
 			} catch {
 				return null;
@@ -173,10 +174,10 @@ export class WebRecipeParser {
 		}
 	}
 
-	private static extractInstructions(input: any): string[] {
+	private static extractInstructions(input: unknown): string[] {
 		const steps: string[] = [];
 
-		const walk = (node: any) => {
+		const walk = (node: unknown) => {
 			if (!node) return;
 			if (Array.isArray(node)) {
 				for (const item of node) walk(item);
@@ -188,21 +189,22 @@ export class WebRecipeParser {
 				return;
 			}
 			if (typeof node !== 'object') return;
+			const obj = node as JsonObj;
 
-			if (typeof node.text === 'string') {
-				const s = this.cleanText(node.text);
+			if (typeof obj.text === 'string') {
+				const s = this.cleanText(obj.text);
 				if (s) steps.push(s);
 			}
 
-			if (Array.isArray(node.itemListElement)) walk(node.itemListElement);
-			if (Array.isArray(node.steps)) walk(node.steps);
+			if (Array.isArray(obj.itemListElement)) walk(obj.itemListElement);
+			if (Array.isArray(obj.steps)) walk(obj.steps);
 		};
 
 		walk(input);
 		return this.unique(steps);
 	}
 
-	private static normalizeStringList(value: any): string[] {
+	private static normalizeStringList(value: unknown): string[] {
 		if (!value) return [];
 
 		if (Array.isArray(value)) {
@@ -226,13 +228,13 @@ export class WebRecipeParser {
 		return [];
 	}
 
-	private static normalizeYield(yieldVal: any): string {
+	private static normalizeYield(yieldVal: unknown): string {
 		if (!yieldVal) return '';
 		if (Array.isArray(yieldVal) && yieldVal.length > 0) return this.cleanText(String(yieldVal[0]));
 		return this.cleanText(String(yieldVal));
 	}
 
-	private static formatDuration(isoDuration: any): string {
+	private static formatDuration(isoDuration: unknown): string {
 		if (!isoDuration || typeof isoDuration !== 'string') return '';
 		const s = isoDuration.trim();
 		if (!s.startsWith('P')) return s;
@@ -251,7 +253,7 @@ export class WebRecipeParser {
 		return parts.join(' ');
 	}
 
-	private static extractNumberString(value: any): string {
+	private static extractNumberString(value: unknown): string {
 		if (!value) return '';
 		const s = String(value);
 		const m = s.match(/([\d.]+)/);
@@ -303,9 +305,11 @@ export class WebRecipeParser {
 	}
 
 	private static isLikelyExternalRecipeUrl(url: string): boolean {
-		if (!url || !/^https?:\/\//i.test(url)) return false;
+		if (!url) return false;
 		try {
-			const host = new URL(url).hostname.toLowerCase();
+			const parsed = new URL(url);
+			if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+			const host = parsed.hostname.toLowerCase();
 			return !host.includes('pinterest.com');
 		} catch {
 			return false;
@@ -318,5 +322,16 @@ export class WebRecipeParser {
 
 	private static unique(values: string[]): string[] {
 		return [...new Set(values.filter(Boolean))];
+	}
+
+	private static stripControlChars(raw: string): string {
+		let out = '';
+		for (const ch of raw) {
+			const code = ch.charCodeAt(0);
+			if (code >= 32 || code === 9 || code === 10 || code === 13) {
+				out += ch;
+			}
+		}
+		return out;
 	}
 }

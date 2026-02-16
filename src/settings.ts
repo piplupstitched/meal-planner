@@ -13,7 +13,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'Meal Planner Settings' });
+		new Setting(containerEl).setName('Meal planner settings').setHeading();
 
 		new Setting(containerEl)
 			.setName('Recipe folder path')
@@ -22,8 +22,8 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder('Recipes')
 					.setValue(this.plugin.dataStore.getData().settings.recipeFolderPath)
-					.onChange(async (value) => {
-						await this.plugin.dataStore.updateSettings({ recipeFolderPath: value });
+					.onChange((value) => {
+						void this.plugin.dataStore.updateSettings({ recipeFolderPath: value });
 					})
 			);
 
@@ -35,8 +35,8 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 					.setLimits(3, 7, 1)
 					.setValue(this.plugin.dataStore.getData().settings.dinnersPerWeek)
 					.setDynamicTooltip()
-					.onChange(async (value) => {
-						await this.plugin.dataStore.updateSettings({ dinnersPerWeek: value });
+					.onChange((value) => {
+						void this.plugin.dataStore.updateSettings({ dinnersPerWeek: value });
 					})
 			);
 
@@ -46,8 +46,8 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 			.addToggle(toggle =>
 				toggle
 					.setValue(this.plugin.dataStore.getData().settings.leftoverLunches)
-					.onChange(async (value) => {
-						await this.plugin.dataStore.updateSettings({ leftoverLunches: value });
+					.onChange((value) => {
+						void this.plugin.dataStore.updateSettings({ leftoverLunches: value });
 					})
 			);
 
@@ -56,31 +56,31 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 			.setDesc('Recipe categories to include when generating plans (comma-separated)')
 			.addText(text =>
 				text
-					.setPlaceholder('Mains, Soups, Salads')
+					.setPlaceholder('mains, soups, salads')
 					.setValue(this.plugin.dataStore.getData().settings.planCategories.join(', '))
-					.onChange(async (value) => {
+					.onChange((value) => {
 						const cats = value.split(',').map(s => s.trim()).filter(Boolean);
-						await this.plugin.dataStore.updateSettings({ planCategories: cats });
+						void this.plugin.dataStore.updateSettings({ planCategories: cats });
 					})
 			);
 
 		// ── Export Settings ──
 
-		containerEl.createEl('h3', { text: 'Grocery Export' });
+		new Setting(containerEl).setName('Grocery export').setHeading();
 
 		new Setting(containerEl)
 			.setName('Grocery list file path')
 			.setDesc('Vault-relative path for the exported grocery list markdown file')
 			.addText(text =>
 				text
-					.setPlaceholder('Grocery List.md')
+					.setPlaceholder('grocery-list.md')
 					.setValue(this.plugin.dataStore.getData().settings.groceryExportPath)
-					.onChange(async (value) => {
-						await this.plugin.dataStore.updateSettings({ groceryExportPath: value });
+					.onChange((value) => {
+						void this.plugin.dataStore.updateSettings({ groceryExportPath: value });
 					})
 			);
 
-		containerEl.createEl('h3', { text: 'Todoist Integration' });
+		new Setting(containerEl).setName('Todoist integration').setHeading();
 
 		new Setting(containerEl)
 			.setName('Todoist API token')
@@ -89,8 +89,8 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder('Enter API token...')
 					.setValue(this.plugin.dataStore.getData().settings.todoistApiToken)
-					.onChange(async (value) => {
-						await this.plugin.dataStore.updateSettings({ todoistApiToken: value });
+					.onChange((value) => {
+						void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
 					})
 			);
 
@@ -99,16 +99,16 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 			.setDesc('Name of the Todoist project for grocery lists (created if it doesn\'t exist)')
 			.addText(text =>
 				text
-					.setPlaceholder('Grocery List')
+					.setPlaceholder('grocery list')
 					.setValue(this.plugin.dataStore.getData().settings.todoistProjectName)
-					.onChange(async (value) => {
-						await this.plugin.dataStore.updateSettings({ todoistProjectName: value });
+					.onChange((value) => {
+						void this.plugin.dataStore.updateSettings({ todoistProjectName: value });
 					})
 			);
 
 		// ── Stats ──
 
-		containerEl.createEl('h3', { text: 'Statistics' });
+		new Setting(containerEl).setName('Statistics').setHeading();
 
 		const cookedCount = this.plugin.dataStore.getCookedMeals().length;
 		const planCount = this.plugin.dataStore.getWeeklyPlans().length;
@@ -127,9 +127,11 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 			.addButton(btn =>
 				btn
 					.setButtonText('Refresh')
-					.onClick(async () => {
-						await this.plugin.refreshRecipes();
-						this.display();
+					.onClick(() => {
+						void (async () => {
+							await this.plugin.refreshRecipes();
+							this.display();
+						})().catch(() => {});
 					})
 			);
 	}

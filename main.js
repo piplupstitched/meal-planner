@@ -185,7 +185,7 @@ var RecipeParser = class {
    */
   parseIngredientLine(raw) {
     const cleanRaw = raw.replace(/\s{2,}/g, " ").trim();
-    const quantityPattern = /^([\d½¼¾⅓⅔⅛\/\-–]+(?:\s*[\d½¼¾⅓⅔⅛\/\-–]*)?)\s+/;
+    const quantityPattern = /^([\d½¼¾⅓⅔⅛/–-–]+(?:\s*[\d½¼¾⅓⅔⅛/–-–]*)?)\s+/;
     const quantityMatch = cleanRaw.match(quantityPattern);
     if (!quantityMatch) {
       return { raw: cleanRaw, name: this.extractIngredientName(cleanRaw) };
@@ -240,7 +240,7 @@ var RecipeParser = class {
     if (!value)
       return 0;
     const cleaned = String(value).replace(/[~g]/g, "");
-    const rangeMatch = cleaned.match(/([\d.]+)\s*[–\-]\s*([\d.]+)/);
+    const rangeMatch = cleaned.match(/([\d.]+)\s*[–-]\s*([\d.]+)/);
     if (rangeMatch) {
       return Math.round((parseFloat(rangeMatch[1]) + parseFloat(rangeMatch[2])) / 2);
     }
@@ -1060,7 +1060,7 @@ var GroceryListGenerator = class {
     if (mixedMatch) {
       return parseInt(mixedMatch[1]) + parseInt(mixedMatch[2]) / parseInt(mixedMatch[3]);
     }
-    const rangeMatch = cleaned.match(/^([\d.]+)\s*[–\-]\s*([\d.]+)$/);
+    const rangeMatch = cleaned.match(/^([\d.]+)\s*[–-]\s*([\d.]+)$/);
     if (rangeMatch) {
       return parseFloat(rangeMatch[2]);
     }
@@ -1089,59 +1089,64 @@ var MealPlanView = class extends import_obsidian2.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     this.dragSourceIndex = null;
+    this.clearConfirmUntil = 0;
     this.plugin = plugin;
   }
   getViewType() {
     return MEAL_PLAN_VIEW_TYPE;
   }
   getDisplayText() {
-    return "Meal Plan";
+    return "Meal plan";
   }
   getIcon() {
     return "utensils";
   }
-  async onOpen() {
-    await this.render();
+  onOpen() {
+    this.render();
   }
-  async render() {
+  render() {
     const container = this.containerEl.children[1];
     container.empty();
     container.addClass("meal-planner-sidebar");
     const header = container.createDiv("meal-planner-header");
-    header.createEl("h3", { text: "Meal Plan" });
+    header.createEl("h3", { text: "Meal plan" });
     const actions = header.createDiv("meal-planner-actions");
-    const genBtn = actions.createEl("button", { text: "Generate Plan" });
+    const genBtn = actions.createEl("button", { text: "Generate plan" });
     genBtn.addEventListener("click", () => {
-      this.plugin.generateMealPlan();
+      void this.plugin.generateMealPlan();
     });
-    const manualBtn = actions.createEl("button", { text: "Select Meals" });
+    const manualBtn = actions.createEl("button", { text: "Select meals" });
     manualBtn.addEventListener("click", () => {
       this.plugin.browseRecipes();
     });
-    const importBtn = actions.createEl("button", { text: "Import URL" });
+    const importBtn = actions.createEl("button", { text: "Import url" });
     importBtn.addEventListener("click", () => {
       this.plugin.openImportRecipeModal();
     });
-    const clearBtn = actions.createEl("button", { text: "Clear Plan" });
-    clearBtn.addEventListener("click", async () => {
-      const ok = window.confirm("Clear all meals for the current week?");
-      if (!ok)
+    const clearBtn = actions.createEl("button", { text: "Clear plan" });
+    clearBtn.addEventListener("click", () => {
+      const now = Date.now();
+      if (now > this.clearConfirmUntil) {
+        this.clearConfirmUntil = now + 3e3;
+        new import_obsidian2.Notice("Click clear plan again within 3 seconds to confirm.");
         return;
-      await this.plugin.clearCurrentWeekPlan();
+      }
+      this.clearConfirmUntil = 0;
+      void this.plugin.clearCurrentWeekPlan();
     });
-    const groceryBtn = actions.createEl("button", { text: "Grocery List" });
+    const groceryBtn = actions.createEl("button", { text: "Grocery list" });
     groceryBtn.addEventListener("click", () => {
       this.plugin.showGroceryList();
     });
     const season = this.plugin.planner.seasonal.getSeasonLabel();
-    const seasonEl = header.createEl("span", {
+    header.createEl("span", {
       text: season,
       cls: `meal-season meal-season-${season.toLowerCase()}`
     });
     const plan = this.plugin.dataStore.getCurrentWeekPlan();
     if (!plan || plan.meals.length === 0) {
       container.createEl("p", {
-        text: 'No meal plan for this week. Click "Generate Plan" or "Select Meals" to create one.',
+        text: 'No meal plan for this week. Click "Generate plan" or "Select meals" to create one.',
         cls: "meal-planner-empty"
       });
       return;
@@ -1170,21 +1175,24 @@ var MealPlanView = class extends import_obsidian2.ItemView {
         row2.createDiv("meal-drag-handle-spacer");
         const checkbox2 = row2.createEl("input", { type: "checkbox" });
         checkbox2.checked = isCooked;
-        checkbox2.addEventListener("change", async () => {
-          if (checkbox2.checked) {
-            await this.plugin.dataStore.markMealCooked(
-              meal.recipeId,
-              meal.plannedDate,
-              meal.mealType
-            );
-            new import_obsidian2.Notice(`Leftover "${recipe.title}" eaten!`);
-          } else {
-            await this.plugin.dataStore.removeCookedMeal(
-              meal.recipeId,
-              meal.plannedDate
-            );
-          }
-          await this.render();
+        checkbox2.addEventListener("change", () => {
+          void (async () => {
+            if (checkbox2.checked) {
+              await this.plugin.dataStore.markMealCooked(
+                meal.recipeId,
+                meal.plannedDate,
+                meal.mealType
+              );
+              new import_obsidian2.Notice(`Leftover "${recipe.title}" eaten.`);
+            } else {
+              await this.plugin.dataStore.removeCookedMeal(
+                meal.recipeId,
+                meal.plannedDate
+              );
+            }
+            this.render();
+          })().catch(() => {
+          });
         });
         const info2 = row2.createDiv("meal-info");
         const dayRow2 = info2.createDiv("meal-day-row");
@@ -1210,7 +1218,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
         row.addClass("meal-cooked");
       row.setAttribute("data-meal-index", String(mealIndex));
       const dragHandle = row.createDiv("meal-drag-handle");
-      dragHandle.innerHTML = "&#x2630;";
+      dragHandle.setText("\u2630");
       dragHandle.setAttribute("aria-label", "Drag to reorder");
       row.setAttribute("draggable", "true");
       row.addEventListener("dragstart", (e) => {
@@ -1243,31 +1251,34 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       row.addEventListener("dragleave", () => {
         row.removeClass("meal-drag-over-above", "meal-drag-over-below");
       });
-      row.addEventListener("drop", async (e) => {
+      row.addEventListener("drop", (e) => {
         e.preventDefault();
         row.removeClass("meal-drag-over-above", "meal-drag-over-below");
         if (this.dragSourceIndex === null || this.dragSourceIndex === mealIndex)
           return;
-        await this.swapMealDays(this.dragSourceIndex, mealIndex);
+        void this.swapMealDays(this.dragSourceIndex, mealIndex);
         this.dragSourceIndex = null;
       });
       const checkbox = row.createEl("input", { type: "checkbox" });
       checkbox.checked = isCooked;
-      checkbox.addEventListener("change", async () => {
-        if (checkbox.checked) {
-          await this.plugin.dataStore.markMealCooked(
-            meal.recipeId,
-            meal.plannedDate,
-            meal.mealType
-          );
-          new import_obsidian2.Notice(`Marked "${recipe.title}" as cooked!`);
-        } else {
-          await this.plugin.dataStore.removeCookedMeal(
-            meal.recipeId,
-            meal.plannedDate
-          );
-        }
-        await this.render();
+      checkbox.addEventListener("change", () => {
+        void (async () => {
+          if (checkbox.checked) {
+            await this.plugin.dataStore.markMealCooked(
+              meal.recipeId,
+              meal.plannedDate,
+              meal.mealType
+            );
+            new import_obsidian2.Notice(`Marked "${recipe.title}" as cooked.`);
+          } else {
+            await this.plugin.dataStore.removeCookedMeal(
+              meal.recipeId,
+              meal.plannedDate
+            );
+          }
+          this.render();
+        })().catch(() => {
+        });
       });
       const info = row.createDiv("meal-info");
       const dayRow = info.createDiv("meal-day-row");
@@ -1326,7 +1337,9 @@ var MealPlanView = class extends import_obsidian2.ItemView {
         menu.addItem((item) => {
           item.setTitle("Remove from plan");
           item.setIcon("trash");
-          item.onClick(() => this.plugin.removeMealFromPlan(meal));
+          item.onClick(() => {
+            void this.plugin.removeMealFromPlan(meal);
+          });
         });
         menu.showAtMouseEvent(e);
       });
@@ -1363,7 +1376,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       cls: "summary-text"
     });
     summary.createEl("div", {
-      text: "Drag meals to reorder days",
+      text: "Drag meals to reorder days.",
       cls: "drag-hint"
     });
   }
@@ -1411,14 +1424,14 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       return 0;
     });
     await this.plugin.dataStore.saveWeeklyPlan(plan);
-    await this.render();
+    this.render();
   }
   isMealCooked(meal) {
     return this.plugin.dataStore.getCookedMeals().some(
       (m) => m.recipeId === meal.recipeId && m.cookedDate === meal.plannedDate
     );
   }
-  async onClose() {
+  onClose() {
   }
 };
 
@@ -1435,7 +1448,7 @@ var RecipeBrowserModal = class extends import_obsidian3.Modal {
   }
   onOpen() {
     this.modalEl.addClass("meal-planner-modal", "recipe-browser");
-    this.titleEl.setText("Select Meals");
+    this.titleEl.setText("Select meals");
     this.render();
   }
   render() {
@@ -1451,7 +1464,7 @@ var RecipeBrowserModal = class extends import_obsidian3.Modal {
       helperParts.push(`${this.addedCount} added this session`);
     }
     contentEl.createEl("p", {
-      text: helperParts.join(" \xB7 "),
+      text: helperParts.join(" | "),
       cls: "recipe-count"
     });
     const searchInput = filterBar.createEl("input", {
@@ -1462,12 +1475,11 @@ var RecipeBrowserModal = class extends import_obsidian3.Modal {
     searchInput.setAttribute("type", "search");
     searchInput.setAttribute("placeholder", "Search recipes...");
     searchInput.value = this.filterText;
-    searchInput.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-    });
-    searchInput.addEventListener("keyup", (e) => {
-      e.stopPropagation();
-    });
+    const stopHotkeyPropagation = (e) => e.stopPropagation();
+    searchInput.addEventListener("keydown", stopHotkeyPropagation);
+    searchInput.addEventListener("keyup", stopHotkeyPropagation);
+    searchInput.addEventListener("keypress", stopHotkeyPropagation);
+    searchInput.addEventListener("beforeinput", stopHotkeyPropagation);
     searchInput.addEventListener("input", () => {
       this.filterText = searchInput.value;
       this.renderList(listContainer);
@@ -1480,9 +1492,9 @@ var RecipeBrowserModal = class extends import_obsidian3.Modal {
       catSelect.createEl("option", { value: cat, text: cat });
     }
     catSelect.value = this.filterCategory;
-    catSelect.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-    });
+    catSelect.addEventListener("keydown", stopHotkeyPropagation);
+    catSelect.addEventListener("keyup", stopHotkeyPropagation);
+    catSelect.addEventListener("keypress", stopHotkeyPropagation);
     catSelect.addEventListener("change", () => {
       this.filterCategory = catSelect.value;
       this.renderList(listContainer);
@@ -1544,13 +1556,16 @@ var RecipeBrowserModal = class extends import_obsidian3.Modal {
       if (stats.timesCooked > 0) {
         parts.push(`cooked ${stats.timesCooked}x`);
       }
-      meta.setText(parts.join(" \xB7 "));
-      const addBtn = row.createEl("button", { text: "+ Plan", cls: "recipe-add-btn" });
-      addBtn.addEventListener("click", async () => {
-        await this.plugin.addRecipeToPlan(recipe);
-        this.addedCount++;
-        new import_obsidian3.Notice(`Added "${recipe.title}" to this week's plan.`);
-        this.render();
+      meta.setText(parts.join(" | "));
+      const addBtn = row.createEl("button", { text: "+ plan", cls: "recipe-add-btn" });
+      addBtn.addEventListener("click", () => {
+        void (async () => {
+          await this.plugin.addRecipeToPlan(recipe);
+          this.addedCount++;
+          new import_obsidian3.Notice(`Added "${recipe.title}" to this week's plan.`);
+          this.render();
+        })().catch(() => {
+        });
       });
     }
   }
@@ -1567,7 +1582,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
   }
   onOpen() {
     this.modalEl.addClass("meal-planner-modal", "grocery-list");
-    this.titleEl.setText("Grocery List");
+    this.titleEl.setText("Grocery list");
     this.render();
   }
   render() {
@@ -1579,7 +1594,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
     }
     const toolbar = contentEl.createDiv("grocery-toolbar");
     const groupToggle = toolbar.createEl("button", {
-      text: this.groupMode === "category" ? "Group by Store" : "Group by Category"
+      text: this.groupMode === "category" ? "Group by store" : "Group by category"
     });
     groupToggle.addEventListener("click", () => {
       this.groupMode = this.groupMode === "category" ? "store" : "category";
@@ -1589,15 +1604,15 @@ var GroceryListModal = class extends import_obsidian3.Modal {
     copyBtn.addEventListener("click", () => {
       this.copyToClipboard();
     });
-    const saveBtn = toolbar.createEl("button", { text: "Save to Vault" });
+    const saveBtn = toolbar.createEl("button", { text: "Save to vault" });
     saveBtn.addEventListener("click", () => {
-      this.saveToVault();
+      void this.saveToVault();
     });
     const token = this.plugin.dataStore.getData().settings.todoistApiToken;
     if (token) {
       const todoistBtn = toolbar.createEl("button", { text: "Send to Todoist", cls: "grocery-todoist-btn" });
       todoistBtn.addEventListener("click", () => {
-        this.sendToTodoist();
+        void this.sendToTodoist();
       });
     }
     const checkedCount = this.items.filter((i) => i.checked).length;
@@ -1634,7 +1649,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
       });
       const qty = item.quantity ? `${item.quantity}${item.unit ? " " + item.unit : ""}` : "";
       const text = qty ? `${qty} ${item.name}` : item.name;
-      const nameEl = row.createEl("span", { text, cls: "grocery-name" });
+      row.createEl("span", { text, cls: "grocery-name" });
       if (item.fromRecipes.length > 0) {
         row.createEl("span", {
           text: `(${item.fromRecipes.join(", ")})`,
@@ -1644,23 +1659,23 @@ var GroceryListModal = class extends import_obsidian3.Modal {
       const storeSelect = row.createEl("select", { cls: "grocery-store" });
       const stores = ["Any", "Costco", "Sam's", "Kroger"];
       for (const s of stores) {
-        const opt = storeSelect.createEl("option", { value: s, text: s });
+        storeSelect.createEl("option", { value: s, text: s });
       }
       storeSelect.value = item.store;
-      storeSelect.addEventListener("change", async () => {
+      storeSelect.addEventListener("change", () => {
         item.store = storeSelect.value;
-        await this.plugin.dataStore.setStoreAssignment(item.name, item.store);
+        void this.plugin.dataStore.setStoreAssignment(item.name, item.store);
       });
     }
   }
   categoryLabel(cat) {
     const labels = {
       produce: "Produce",
-      protein: "Protein & Meat",
-      dairy: "Dairy & Eggs",
-      bakery: "Bakery & Bread",
+      protein: "Protein and meat",
+      dairy: "Dairy and eggs",
+      bakery: "Bakery and bread",
       frozen: "Frozen",
-      spices: "Spices & Seasoning",
+      spices: "Spices and seasoning",
       pantry: "Pantry",
       other: "Other"
     };
@@ -1669,15 +1684,17 @@ var GroceryListModal = class extends import_obsidian3.Modal {
   // ── Export: Clipboard ──
   copyToClipboard() {
     const markdown = this.buildMarkdown();
-    navigator.clipboard.writeText(markdown);
-    new import_obsidian3.Notice("Grocery list copied to clipboard!");
+    void navigator.clipboard.writeText(markdown).then(() => {
+      new import_obsidian3.Notice("Grocery list copied to clipboard.");
+    }).catch(() => {
+    });
   }
   // ── Export: Save to Vault ──
   async saveToVault() {
     const markdown = this.buildMarkdown();
     const path = this.plugin.dataStore.getData().settings.groceryExportPath;
     const existing = this.app.vault.getAbstractFileByPath(path);
-    if (existing) {
+    if (existing instanceof import_obsidian3.TFile) {
       await this.app.vault.modify(existing, markdown);
     } else {
       await this.app.vault.create(path, markdown);
@@ -1689,7 +1706,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
     const settings = this.plugin.dataStore.getData().settings;
     const token = settings.todoistApiToken;
     if (!token) {
-      new import_obsidian3.Notice("Todoist API token not configured. Set it in Meal Planner settings.");
+      new import_obsidian3.Notice("Todoist API token not configured. Set it in meal planner settings.");
       return;
     }
     try {
@@ -1721,7 +1738,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
           addedCount++;
         }
       }
-      new import_obsidian3.Notice(`Sent ${addedCount} items to Todoist project "${settings.todoistProjectName}"!`);
+      new import_obsidian3.Notice(`Sent ${addedCount} items to Todoist project "${settings.todoistProjectName}".`);
     } catch (e) {
       console.error("Todoist export failed:", e);
       new import_obsidian3.Notice(`Todoist export failed: ${e.message}`);
@@ -1793,7 +1810,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
   }
   // ── Shared markdown builder ──
   buildMarkdown() {
-    const lines = ["# Grocery List", ""];
+    const lines = ["# Grocery list", ""];
     const plan = this.plugin.dataStore.getCurrentWeekPlan();
     if (plan) {
       const recipeMap = new Map(this.plugin.cachedRecipes.map((r) => [r.id, r]));
@@ -1829,14 +1846,14 @@ var ImportRecipeModal = class extends import_obsidian3.Modal {
   }
   onOpen() {
     this.modalEl.addClass("meal-planner-modal", "recipe-import");
-    this.titleEl.setText("Import Recipe from URL");
+    this.titleEl.setText("Import recipe from url");
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("p", {
-      text: "Paste a recipe URL or Pinterest pin URL. The importer will try structured recipe data first.",
+      text: "Paste a recipe url or Pinterest pin url. The importer will try structured recipe data first.",
       cls: "recipe-count"
     });
-    new import_obsidian3.Setting(contentEl).setName("Recipe URL").setDesc("Example: https://example.com/recipe or https://www.pinterest.com/pin/...").addText((text) => {
+    new import_obsidian3.Setting(contentEl).setName("Recipe url").setDesc("Example: https://example.com/recipe or https://www.pinterest.com/pin/...").addText((text) => {
       text.setPlaceholder("https://...").setValue(this.url).onChange((value) => {
         this.url = value.trim();
       });
@@ -1850,7 +1867,7 @@ var ImportRecipeModal = class extends import_obsidian3.Modal {
       window.setTimeout(() => text.inputEl.focus(), 0);
     });
     const actions = contentEl.createDiv("recipe-import-actions");
-    this.importBtn = actions.createEl("button", { text: "Import Recipe" });
+    this.importBtn = actions.createEl("button", { text: "Import recipe" });
     this.importBtn.addEventListener("click", () => {
       void this.importNow();
     });
@@ -1860,7 +1877,7 @@ var ImportRecipeModal = class extends import_obsidian3.Modal {
   }
   async importNow() {
     if (!this.url) {
-      new import_obsidian3.Notice("Please paste a URL first.");
+      new import_obsidian3.Notice("Please paste a url first.");
       return;
     }
     if (!this.importBtn)
@@ -1914,46 +1931,46 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Meal Planner Settings" });
+    new import_obsidian4.Setting(containerEl).setName("Meal planner settings").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Recipe folder path").setDesc("Path to your recipe folder relative to vault root").addText(
-      (text) => text.setPlaceholder("Recipes").setValue(this.plugin.dataStore.getData().settings.recipeFolderPath).onChange(async (value) => {
-        await this.plugin.dataStore.updateSettings({ recipeFolderPath: value });
+      (text) => text.setPlaceholder("Recipes").setValue(this.plugin.dataStore.getData().settings.recipeFolderPath).onChange((value) => {
+        void this.plugin.dataStore.updateSettings({ recipeFolderPath: value });
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Dinners per week").setDesc("Number of dinner recipes to plan per week").addSlider(
-      (slider) => slider.setLimits(3, 7, 1).setValue(this.plugin.dataStore.getData().settings.dinnersPerWeek).setDynamicTooltip().onChange(async (value) => {
-        await this.plugin.dataStore.updateSettings({ dinnersPerWeek: value });
+      (slider) => slider.setLimits(3, 7, 1).setValue(this.plugin.dataStore.getData().settings.dinnersPerWeek).setDynamicTooltip().onChange((value) => {
+        void this.plugin.dataStore.updateSettings({ dinnersPerWeek: value });
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Leftover lunches").setDesc("Assume dinners provide leftovers for 1-2 lunches the next day").addToggle(
-      (toggle) => toggle.setValue(this.plugin.dataStore.getData().settings.leftoverLunches).onChange(async (value) => {
-        await this.plugin.dataStore.updateSettings({ leftoverLunches: value });
+      (toggle) => toggle.setValue(this.plugin.dataStore.getData().settings.leftoverLunches).onChange((value) => {
+        void this.plugin.dataStore.updateSettings({ leftoverLunches: value });
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Plan categories").setDesc("Recipe categories to include when generating plans (comma-separated)").addText(
-      (text) => text.setPlaceholder("Mains, Soups, Salads").setValue(this.plugin.dataStore.getData().settings.planCategories.join(", ")).onChange(async (value) => {
+      (text) => text.setPlaceholder("mains, soups, salads").setValue(this.plugin.dataStore.getData().settings.planCategories.join(", ")).onChange((value) => {
         const cats = value.split(",").map((s) => s.trim()).filter(Boolean);
-        await this.plugin.dataStore.updateSettings({ planCategories: cats });
+        void this.plugin.dataStore.updateSettings({ planCategories: cats });
       })
     );
-    containerEl.createEl("h3", { text: "Grocery Export" });
+    new import_obsidian4.Setting(containerEl).setName("Grocery export").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Grocery list file path").setDesc("Vault-relative path for the exported grocery list markdown file").addText(
-      (text) => text.setPlaceholder("Grocery List.md").setValue(this.plugin.dataStore.getData().settings.groceryExportPath).onChange(async (value) => {
-        await this.plugin.dataStore.updateSettings({ groceryExportPath: value });
+      (text) => text.setPlaceholder("grocery-list.md").setValue(this.plugin.dataStore.getData().settings.groceryExportPath).onChange((value) => {
+        void this.plugin.dataStore.updateSettings({ groceryExportPath: value });
       })
     );
-    containerEl.createEl("h3", { text: "Todoist Integration" });
+    new import_obsidian4.Setting(containerEl).setName("Todoist integration").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Todoist API token").setDesc("Your Todoist API token (Settings > Integrations > Developer in Todoist)").addText(
-      (text) => text.setPlaceholder("Enter API token...").setValue(this.plugin.dataStore.getData().settings.todoistApiToken).onChange(async (value) => {
-        await this.plugin.dataStore.updateSettings({ todoistApiToken: value });
+      (text) => text.setPlaceholder("Enter API token...").setValue(this.plugin.dataStore.getData().settings.todoistApiToken).onChange((value) => {
+        void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Todoist project name").setDesc("Name of the Todoist project for grocery lists (created if it doesn't exist)").addText(
-      (text) => text.setPlaceholder("Grocery List").setValue(this.plugin.dataStore.getData().settings.todoistProjectName).onChange(async (value) => {
-        await this.plugin.dataStore.updateSettings({ todoistProjectName: value });
+      (text) => text.setPlaceholder("grocery list").setValue(this.plugin.dataStore.getData().settings.todoistProjectName).onChange((value) => {
+        void this.plugin.dataStore.updateSettings({ todoistProjectName: value });
       })
     );
-    containerEl.createEl("h3", { text: "Statistics" });
+    new import_obsidian4.Setting(containerEl).setName("Statistics").setHeading();
     const cookedCount = this.plugin.dataStore.getCookedMeals().length;
     const planCount = this.plugin.dataStore.getWeeklyPlans().length;
     const recipeCount = this.plugin.cachedRecipes.length;
@@ -1963,9 +1980,12 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
     containerEl.createEl("p", { text: `Weekly plans generated: ${planCount}` });
     containerEl.createEl("p", { text: `Current season: ${season}` });
     new import_obsidian4.Setting(containerEl).setName("Refresh recipe index").setDesc("Re-scan all recipe files").addButton(
-      (btn) => btn.setButtonText("Refresh").onClick(async () => {
-        await this.plugin.refreshRecipes();
-        this.display();
+      (btn) => btn.setButtonText("Refresh").onClick(() => {
+        void (async () => {
+          await this.plugin.refreshRecipes();
+          this.display();
+        })().catch(() => {
+        });
       })
     );
   }
@@ -2040,7 +2060,7 @@ var WebRecipeParser = class {
       } catch {
       }
     }
-    const escapedLinkMatches = html.match(/"link":"(https?:\\\/\\\/[^"]+)"/gi) || [];
+    const escapedLinkMatches = html.match(/"link":"(https?:[^"]+)"/gi) || [];
     for (const raw of escapedLinkMatches) {
       const m = raw.match(/"link":"([^"]+)"/i);
       if (!m?.[1])
@@ -2073,10 +2093,11 @@ var WebRecipeParser = class {
     }
     if (typeof node !== "object")
       return;
-    if (this.isRecipeType(node["@type"])) {
-      out.push(node);
+    const obj = node;
+    if (this.isRecipeType(obj["@type"])) {
+      out.push(obj);
     }
-    for (const value of Object.values(node)) {
+    for (const value of Object.values(obj)) {
       this.walkForRecipeObjects(value, out);
     }
   }
@@ -2104,7 +2125,7 @@ var WebRecipeParser = class {
       return JSON.parse(raw);
     } catch {
       try {
-        const cleaned = raw.replace(/[\u0000-\u001F]+/g, "");
+        const cleaned = this.stripControlChars(raw);
         return JSON.parse(cleaned);
       } catch {
         return null;
@@ -2129,15 +2150,16 @@ var WebRecipeParser = class {
       }
       if (typeof node !== "object")
         return;
-      if (typeof node.text === "string") {
-        const s = this.cleanText(node.text);
+      const obj = node;
+      if (typeof obj.text === "string") {
+        const s = this.cleanText(obj.text);
         if (s)
           steps.push(s);
       }
-      if (Array.isArray(node.itemListElement))
-        walk(node.itemListElement);
-      if (Array.isArray(node.steps))
-        walk(node.steps);
+      if (Array.isArray(obj.itemListElement))
+        walk(obj.itemListElement);
+      if (Array.isArray(obj.steps))
+        walk(obj.steps);
     };
     walk(input);
     return this.unique(steps);
@@ -2234,10 +2256,13 @@ var WebRecipeParser = class {
     return s;
   }
   static isLikelyExternalRecipeUrl(url) {
-    if (!url || !/^https?:\/\//i.test(url))
+    if (!url)
       return false;
     try {
-      const host = new URL(url).hostname.toLowerCase();
+      const parsed = new URL(url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+        return false;
+      const host = parsed.hostname.toLowerCase();
       return !host.includes("pinterest.com");
     } catch {
       return false;
@@ -2248,6 +2273,16 @@ var WebRecipeParser = class {
   }
   static unique(values) {
     return [...new Set(values.filter(Boolean))];
+  }
+  static stripControlChars(raw) {
+    let out = "";
+    for (const ch of raw) {
+      const code = ch.charCodeAt(0);
+      if (code >= 32 || code === 9 || code === 10 || code === 13) {
+        out += ch;
+      }
+    }
+    return out;
   }
 };
 
@@ -2267,12 +2302,16 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     this.addCommand({
       id: "open-meal-plan",
       name: "Open meal plan",
-      callback: () => this.activateView()
+      callback: () => {
+        void this.activateView();
+      }
     });
     this.addCommand({
       id: "generate-meal-plan",
       name: "Generate weekly meal plan",
-      callback: () => this.generateMealPlan()
+      callback: () => {
+        void this.generateMealPlan();
+      }
     });
     this.addCommand({
       id: "view-grocery-list",
@@ -2286,29 +2325,32 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     });
     this.addCommand({
       id: "import-recipe-from-url",
-      name: "Import recipe from URL",
+      name: "Import recipe from url",
       callback: () => this.openImportRecipeModal()
     });
     this.addCommand({
       id: "list-parsed-recipes",
       name: "List all parsed recipes",
-      callback: () => this.listParsedRecipes()
+      callback: () => {
+        void this.listParsedRecipes();
+      }
     });
     this.addCommand({
       id: "refresh-recipes",
       name: "Refresh recipe index",
-      callback: () => this.refreshRecipes()
+      callback: () => {
+        void this.refreshRecipes();
+      }
     });
     this.addSettingTab(new MealPlannerSettingTab(this.app, this));
-    this.addRibbonIcon("utensils", "Meal Planner", () => {
-      this.activateView();
+    this.addRibbonIcon("utensils", "Meal planner", () => {
+      void this.activateView();
     });
-    this.app.workspace.onLayoutReady(async () => {
-      await this.refreshRecipes();
+    this.app.workspace.onLayoutReady(() => {
+      void this.refreshRecipes();
     });
   }
   onunload() {
-    this.app.workspace.detachLeavesOfType(MEAL_PLAN_VIEW_TYPE);
   }
   // ── Core Operations ──
   async refreshRecipes() {
@@ -2335,7 +2377,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       new import_obsidian5.Notice(`Error generating plan: ${e.message}`);
     }
   }
-  async showGroceryList() {
+  showGroceryList() {
     const plan = this.dataStore.getCurrentWeekPlan();
     if (!plan || plan.meals.length === 0) {
       new import_obsidian5.Notice("No meal plan for this week. Generate one first.");
@@ -2350,8 +2392,9 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
   browseRecipes() {
     if (this.cachedRecipes.length === 0) {
       new import_obsidian5.Notice("No recipes loaded. Refreshing...");
-      this.refreshRecipes().then(() => {
+      void this.refreshRecipes().then(() => {
         new RecipeBrowserModal(this.app, this).open();
+      }).catch(() => {
       });
       return;
     }
@@ -2362,8 +2405,8 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
   }
   async importRecipeFromUrl(rawUrl) {
     const url = rawUrl.trim();
-    if (!/^https?:\/\//i.test(url)) {
-      throw new Error("Please enter a valid http(s) URL.");
+    if (!this.isHttpUrl(url)) {
+      throw new Error("Please enter a valid http(s) url.");
     }
     const primaryHtml = await this.fetchHtml(url);
     let draft = WebRecipeParser.parseRecipeFromHtml(primaryHtml, url);
@@ -2400,9 +2443,9 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       return parts.join(" \xB7 ");
     });
     new import_obsidian5.Notice(`Found ${this.cachedRecipes.length} recipes. Check console for details.`);
-    console.log("=== Parsed Recipes ===");
-    lines.forEach((l) => console.log(l));
-    console.log("=== End ===");
+    console.debug("=== Parsed recipes ===");
+    lines.forEach((l) => console.debug(l));
+    console.debug("=== End ===");
   }
   // ── Plan Manipulation ──
   async addRecipeToPlan(recipe) {
@@ -2439,56 +2482,60 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     await this.dataStore.saveWeeklyPlan(plan);
     this.refreshView();
   }
-  async swapRecipe(meal) {
-    new RecipeSuggestModal(this.app, this, async (recipe) => {
-      const plan = this.dataStore.getCurrentWeekPlan();
-      if (!plan)
-        return;
-      const idx = plan.meals.findIndex(
-        (m) => m.recipeId === meal.recipeId && m.plannedDate === meal.plannedDate && m.mealType === meal.mealType
-      );
-      if (idx >= 0) {
-        const oldRecipeId = plan.meals[idx].recipeId;
-        const oldDate = plan.meals[idx].plannedDate;
-        plan.meals[idx] = {
-          ...plan.meals[idx],
-          recipeId: recipe.id,
-          servings: recipe.servings
-        };
-        if (!meal.isLeftover) {
-          plan.meals = plan.meals.filter(
-            (m) => !(m.isLeftover && m.leftoverSourceDate === oldDate && m.recipeId === oldRecipeId)
-          );
-          const settings = this.dataStore.getData().settings;
-          if (settings.leftoverLunches && recipe.servings >= 4) {
-            const nextDay = /* @__PURE__ */ new Date(oldDate + "T00:00:00");
-            nextDay.setDate(nextDay.getDate() + 1);
-            const nextDayStr = this.dataStore.formatDate(nextDay);
-            const leftoverServings = recipe.servings >= 6 ? 2 : 1;
-            plan.meals.push({
-              recipeId: recipe.id,
-              plannedDate: nextDayStr,
-              mealType: "lunch",
-              servings: leftoverServings,
-              isLeftover: true,
-              leftoverSourceDate: oldDate
+  swapRecipe(meal) {
+    new RecipeSuggestModal(this.app, this, (recipe) => {
+      void (async () => {
+        const plan = this.dataStore.getCurrentWeekPlan();
+        if (!plan)
+          return;
+        const idx = plan.meals.findIndex(
+          (m) => m.recipeId === meal.recipeId && m.plannedDate === meal.plannedDate && m.mealType === meal.mealType
+        );
+        if (idx >= 0) {
+          const oldRecipeId = plan.meals[idx].recipeId;
+          const oldDate = plan.meals[idx].plannedDate;
+          plan.meals[idx] = {
+            ...plan.meals[idx],
+            recipeId: recipe.id,
+            servings: recipe.servings
+          };
+          if (!meal.isLeftover) {
+            plan.meals = plan.meals.filter(
+              (m) => !(m.isLeftover && m.leftoverSourceDate === oldDate && m.recipeId === oldRecipeId)
+            );
+            const settings = this.dataStore.getData().settings;
+            if (settings.leftoverLunches && recipe.servings >= 4) {
+              const nextDay = /* @__PURE__ */ new Date(oldDate + "T00:00:00");
+              nextDay.setDate(nextDay.getDate() + 1);
+              const nextDayStr = this.dataStore.formatDate(nextDay);
+              const leftoverServings = recipe.servings >= 6 ? 2 : 1;
+              plan.meals.push({
+                recipeId: recipe.id,
+                plannedDate: nextDayStr,
+                mealType: "lunch",
+                servings: leftoverServings,
+                isLeftover: true,
+                leftoverSourceDate: oldDate
+              });
+            }
+            plan.meals.sort((a, b) => {
+              const dc = a.plannedDate.localeCompare(b.plannedDate);
+              if (dc !== 0)
+                return dc;
+              if (a.isLeftover && !b.isLeftover)
+                return 1;
+              if (!a.isLeftover && b.isLeftover)
+                return -1;
+              return 0;
             });
           }
-          plan.meals.sort((a, b) => {
-            const dc = a.plannedDate.localeCompare(b.plannedDate);
-            if (dc !== 0)
-              return dc;
-            if (a.isLeftover && !b.isLeftover)
-              return 1;
-            if (!a.isLeftover && b.isLeftover)
-              return -1;
-            return 0;
-          });
+          await this.dataStore.saveWeeklyPlan(plan);
+          new import_obsidian5.Notice(`Swapped to "${recipe.title}"`);
+          this.refreshView();
         }
-        await this.dataStore.saveWeeklyPlan(plan);
-        new import_obsidian5.Notice(`Swapped to "${recipe.title}"`);
-        this.refreshView();
-      }
+      })().catch((e) => {
+        new import_obsidian5.Notice(`Failed to swap recipe: ${e.message}`);
+      });
     }).open();
   }
   async removeMealFromPlan(meal) {
@@ -2538,7 +2585,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       workspace.revealLeaf(leaf);
       const view = leaf.view;
       if (view && typeof view.render === "function") {
-        await view.render();
+        view.render();
       }
     }
   }
@@ -2554,7 +2601,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
   openRecipeFile(filePath) {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (file instanceof import_obsidian5.TFile) {
-      this.app.workspace.getLeaf(false).openFile(file);
+      void this.app.workspace.getLeaf(false).openFile(file);
     }
   }
   async fetchHtml(url) {
@@ -2577,7 +2624,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     const baseName = this.toSafeFileName(draft.title || "Imported Recipe");
     const availablePath = this.app.vault.getAvailablePath(`${folder}/${baseName}`, "md");
     const markdown = this.buildImportedRecipeMarkdown(draft);
-    return await this.app.vault.create(availablePath, markdown);
+    return this.app.vault.create(availablePath, markdown);
   }
   getImportFolderForMealType(mealTypes) {
     const root = this.dataStore.getRecipeFolderPath();
@@ -2647,5 +2694,13 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
   }
   escapeYaml(value) {
     return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  }
+  isHttpUrl(url) {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
   }
 };

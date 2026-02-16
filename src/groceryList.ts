@@ -146,7 +146,7 @@ export class GroceryListGenerator {
 		}
 
 		// Handle ranges "1-2" — take the higher value
-		const rangeMatch = cleaned.match(/^([\d.]+)\s*[–\-]\s*([\d.]+)$/);
+		const rangeMatch = cleaned.match(/^([\d.]+)\s*[–-]\s*([\d.]+)$/);
 		if (rangeMatch) {
 			return parseFloat(rangeMatch[2]);
 		}
@@ -169,3 +169,4 @@ export class GroceryListGenerator {
 		return order[cat] ?? 99;
 	}
 }
+
