@@ -1119,7 +1119,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
     manualBtn.addEventListener("click", () => {
       this.plugin.browseRecipes();
     });
-    const importBtn = actions.createEl("button", { text: "Import URL" });
+    const importBtn = actions.createEl("button", { text: "Import url" });
     importBtn.addEventListener("click", () => {
       this.plugin.openImportRecipeModal();
     });
@@ -1146,7 +1146,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
     const plan = this.plugin.dataStore.getCurrentWeekPlan();
     if (!plan || plan.meals.length === 0) {
       container.createEl("p", {
-        text: 'No meal plan for this week. Click "Generate plan" or "Select meals" to create one.',
+        text: 'No meal plan for this week. Click "generate plan" or "select meals" to create one.',
         cls: "meal-planner-empty"
       });
       return;
@@ -1706,7 +1706,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
     const settings = this.plugin.dataStore.getData().settings;
     const token = settings.todoistApiToken;
     if (!token) {
-      new import_obsidian3.Notice("Todoist API token not configured. Set it in meal planner settings.");
+      new import_obsidian3.Notice("Todoist api token not configured. Set it in meal planner settings.");
       return;
     }
     try {
@@ -1846,14 +1846,14 @@ var ImportRecipeModal = class extends import_obsidian3.Modal {
   }
   onOpen() {
     this.modalEl.addClass("meal-planner-modal", "recipe-import");
-    this.titleEl.setText("Import recipe from URL");
+    this.titleEl.setText("Import recipe from url");
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("p", {
-      text: "Paste a recipe URL or Pinterest pin URL. The importer will try structured recipe data first.",
+      text: "Paste a recipe url or Pinterest pin url. The importer will try structured recipe data first.",
       cls: "recipe-count"
     });
-    new import_obsidian3.Setting(contentEl).setName("Recipe URL").setDesc("Example: https://example.com/recipe or https://www.pinterest.com/pin/...").addText((text) => {
+    new import_obsidian3.Setting(contentEl).setName("Recipe url").setDesc("Example: https://example.com/recipe or https://www.pinterest.com/pin/...").addText((text) => {
       text.setPlaceholder("https://...").setValue(this.url).onChange((value) => {
         this.url = value.trim();
       });
@@ -1877,7 +1877,7 @@ var ImportRecipeModal = class extends import_obsidian3.Modal {
   }
   async importNow() {
     if (!this.url) {
-      new import_obsidian3.Notice("Please paste a URL first.");
+      new import_obsidian3.Notice("Please paste a url first.");
       return;
     }
     if (!this.importBtn)
@@ -1960,12 +1960,12 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Todoist integration").setHeading();
-    new import_obsidian4.Setting(containerEl).setName("Todoist API token").setDesc("Your Todoist API token (Settings > Integrations > Developer in Todoist)").addText(
+    new import_obsidian4.Setting(containerEl).setName("Todoist api token").setDesc("Your Todoist api token (Todoist settings > integrations > developer)").addText(
       (text) => text.setPlaceholder("Enter API token...").setValue(this.plugin.dataStore.getData().settings.todoistApiToken).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
       })
     );
-    new import_obsidian4.Setting(containerEl).setName("Todoist project name").setDesc("Name of the Todoist project for grocery lists (created if it doesn't exist)").addText(
+    new import_obsidian4.Setting(containerEl).setName("Todoist project name").setDesc("Name of the Todoist project for grocery lists (created if it does not exist)").addText(
       (text) => text.setPlaceholder("grocery list").setValue(this.plugin.dataStore.getData().settings.todoistProjectName).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ todoistProjectName: value });
       })
@@ -2381,7 +2381,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     });
     this.addCommand({
       id: "import-recipe-from-url",
-      name: "Import recipe from URL",
+      name: "Import recipe from url",
       callback: () => {
         this.openImportRecipeModal();
       }

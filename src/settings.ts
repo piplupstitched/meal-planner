@@ -83,8 +83,8 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName('Todoist integration').setHeading();
 
 		new Setting(containerEl)
-			.setName('Todoist API token')
-			.setDesc('Your Todoist API token (Settings > Integrations > Developer in Todoist)')
+			.setName('Todoist api token')
+			.setDesc('Your Todoist api token (Todoist settings > integrations > developer)')
 			.addText(text =>
 				text
 					.setPlaceholder('Enter API token...')
@@ -96,7 +96,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Todoist project name')
-			.setDesc('Name of the Todoist project for grocery lists (created if it doesn\'t exist)')
+			.setDesc('Name of the Todoist project for grocery lists (created if it does not exist)')
 			.addText(text =>
 				text
 					.setPlaceholder('grocery list')

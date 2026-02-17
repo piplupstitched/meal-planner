@@ -339,7 +339,7 @@ export class GroceryListModal extends Modal {
 		const settings = this.plugin.dataStore.getData().settings;
 		const token = settings.todoistApiToken;
 		if (!token) {
-			new Notice('Todoist API token not configured. Set it in meal planner settings.');
+			new Notice('Todoist api token not configured. Set it in meal planner settings.');
 			return;
 		}
 
@@ -521,18 +521,18 @@ export class ImportRecipeModal extends Modal {
 
 	onOpen(): void {
 		this.modalEl.addClass('meal-planner-modal', 'recipe-import');
-		this.titleEl.setText('Import recipe from URL');
+		this.titleEl.setText('Import recipe from url');
 
 		const { contentEl } = this;
 		contentEl.empty();
 
 		contentEl.createEl('p', {
-			text: 'Paste a recipe URL or Pinterest pin URL. The importer will try structured recipe data first.',
+			text: 'Paste a recipe url or Pinterest pin url. The importer will try structured recipe data first.',
 			cls: 'recipe-count',
 		});
 
 		new Setting(contentEl)
-			.setName('Recipe URL')
+			.setName('Recipe url')
 			.setDesc('Example: https://example.com/recipe or https://www.pinterest.com/pin/...')
 			.addText(text => {
 				text
@@ -565,7 +565,7 @@ export class ImportRecipeModal extends Modal {
 
 	private async importNow(): Promise<void> {
 		if (!this.url) {
-			new Notice('Please paste a URL first.');
+			new Notice('Please paste a url first.');
 			return;
 		}
 		if (!this.importBtn) return;

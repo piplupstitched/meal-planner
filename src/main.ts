@@ -59,7 +59,7 @@ export default class MealPlannerPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'import-recipe-from-url',
-			name: 'Import recipe from URL',
+			name: 'Import recipe from url',
 			callback: () => {
 				this.openImportRecipeModal();
 			},

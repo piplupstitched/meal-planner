@@ -59,7 +59,7 @@ export class MealPlanView extends ItemView {
 			this.plugin.browseRecipes();
 		});
 
-		const importBtn = actions.createEl('button', { text: 'Import URL' });
+		const importBtn = actions.createEl('button', { text: 'Import url' });
 		importBtn.addEventListener('click', () => {
 			this.plugin.openImportRecipeModal();
 		});
@@ -92,7 +92,7 @@ export class MealPlanView extends ItemView {
 		const plan = this.plugin.dataStore.getCurrentWeekPlan();
 		if (!plan || plan.meals.length === 0) {
 			container.createEl('p', {
-				text: 'No meal plan for this week. Click "Generate plan" or "Select meals" to create one.',
+				text: 'No meal plan for this week. Click "generate plan" or "select meals" to create one.',
 				cls: 'meal-planner-empty',
 			});
 			return;

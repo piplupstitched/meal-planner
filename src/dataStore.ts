@@ -4,7 +4,6 @@ import {
 	DEFAULT_DATA,
 	CookedMeal,
 	WeeklyPlan,
-	PlannedMeal,
 	RecipeStats,
 	StoreName,
 	GroceryCategory,
