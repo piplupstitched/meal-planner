@@ -59,7 +59,7 @@ export class MealPlanView extends ItemView {
 			this.plugin.browseRecipes();
 		});
 
-		const importBtn = actions.createEl('button', { text: 'Import url' });
+		const importBtn = actions.createEl('button', { text: 'Import URL' });
 		importBtn.addEventListener('click', () => {
 			this.plugin.openImportRecipeModal();
 		});
@@ -92,7 +92,7 @@ export class MealPlanView extends ItemView {
 		const plan = this.plugin.dataStore.getCurrentWeekPlan();
 		if (!plan || plan.meals.length === 0) {
 			container.createEl('p', {
-				text: 'No meal plan for this week. Click "generate plan" or "select meals" to create one.',
+				text: 'No meal plan for this week. Click "Generate plan" or "Select meals" to create one.',
 				cls: 'meal-planner-empty',
 			});
 			return;
@@ -161,7 +161,7 @@ export class MealPlanView extends ItemView {
 					dayRow.createEl('span', { text: dayName, cls: 'meal-day' });
 				}
 
-				dayRow.createEl('span', { text: 'leftover', cls: 'meal-leftover-badge' });
+				dayRow.createEl('span', { text: 'Leftover', cls: 'meal-leftover-badge' });
 
 				const servingsLabel = meal.servings > 1 ? ` (x${meal.servings})` : '';
 				const titleEl = info.createEl('div', {
@@ -173,7 +173,7 @@ export class MealPlanView extends ItemView {
 				});
 
 				const meta = info.createDiv('meal-meta');
-				meta.setText(`lunch · ${recipe.caloriesPerServing || '?'} cal/serving`);
+				meta.setText(`Lunch · ${recipe.caloriesPerServing || '?'} cal/serving`);
 
 				lastDate = meal.plannedDate;
 				continue;
@@ -273,7 +273,7 @@ export class MealPlanView extends ItemView {
 					cls: 'meal-seasonal-badge',
 					attr: { 'aria-label': `In season: ${inSeason.join(', ')}` },
 				});
-				badge.setText('seasonal');
+				badge.setText('Seasonal');
 				badge.setAttribute('title', `In season: ${inSeason.join(', ')}`);
 			}
 
@@ -283,7 +283,7 @@ export class MealPlanView extends ItemView {
 			);
 			if (hasLeftovers) {
 				dayRow.createEl('span', {
-					text: `+leftovers`,
+					text: 'Leftovers',
 					cls: 'meal-has-leftovers-badge',
 				});
 			}
@@ -299,9 +299,9 @@ export class MealPlanView extends ItemView {
 			if (recipe.protein) metaParts.push(`${recipe.protein}g protein`);
 			if (recipe.frontmatter.cook_time) metaParts.push(recipe.frontmatter.cook_time);
 			if (stats.daysSinceLastMade !== null) {
-				metaParts.push(`last made ${stats.daysSinceLastMade}d ago`);
+				metaParts.push(`Last made ${stats.daysSinceLastMade}d ago`);
 			} else {
-				metaParts.push('never made');
+				metaParts.push('Never made');
 			}
 			meta.setText(metaParts.join(' · '));
 

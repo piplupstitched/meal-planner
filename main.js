@@ -1119,7 +1119,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
     manualBtn.addEventListener("click", () => {
       this.plugin.browseRecipes();
     });
-    const importBtn = actions.createEl("button", { text: "Import url" });
+    const importBtn = actions.createEl("button", { text: "Import URL" });
     importBtn.addEventListener("click", () => {
       this.plugin.openImportRecipeModal();
     });
@@ -1146,7 +1146,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
     const plan = this.plugin.dataStore.getCurrentWeekPlan();
     if (!plan || plan.meals.length === 0) {
       container.createEl("p", {
-        text: 'No meal plan for this week. Click "generate plan" or "select meals" to create one.',
+        text: 'No meal plan for this week. Click "Generate plan" or "Select meals" to create one.',
         cls: "meal-planner-empty"
       });
       return;
@@ -1199,7 +1199,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
         if (meal.plannedDate !== lastDate) {
           dayRow2.createEl("span", { text: dayName, cls: "meal-day" });
         }
-        dayRow2.createEl("span", { text: "leftover", cls: "meal-leftover-badge" });
+        dayRow2.createEl("span", { text: "Leftover", cls: "meal-leftover-badge" });
         const servingsLabel = meal.servings > 1 ? ` (x${meal.servings})` : "";
         const titleEl2 = info2.createEl("div", {
           text: `${recipe.title}${servingsLabel}`,
@@ -1209,7 +1209,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
           this.plugin.openRecipeFile(recipe.filePath);
         });
         const meta2 = info2.createDiv("meal-meta");
-        meta2.setText(`lunch \xB7 ${recipe.caloriesPerServing || "?"} cal/serving`);
+        meta2.setText(`Lunch \xB7 ${recipe.caloriesPerServing || "?"} cal/serving`);
         lastDate = meal.plannedDate;
         continue;
       }
@@ -1292,7 +1292,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
           cls: "meal-seasonal-badge",
           attr: { "aria-label": `In season: ${inSeason.join(", ")}` }
         });
-        badge.setText("seasonal");
+        badge.setText("Seasonal");
         badge.setAttribute("title", `In season: ${inSeason.join(", ")}`);
       }
       const hasLeftovers = plan.meals.some(
@@ -1300,7 +1300,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       );
       if (hasLeftovers) {
         dayRow.createEl("span", {
-          text: `+leftovers`,
+          text: "Leftovers",
           cls: "meal-has-leftovers-badge"
         });
       }
@@ -1317,9 +1317,9 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       if (recipe.frontmatter.cook_time)
         metaParts.push(recipe.frontmatter.cook_time);
       if (stats.daysSinceLastMade !== null) {
-        metaParts.push(`last made ${stats.daysSinceLastMade}d ago`);
+        metaParts.push(`Last made ${stats.daysSinceLastMade}d ago`);
       } else {
-        metaParts.push("never made");
+        metaParts.push("Never made");
       }
       meta.setText(metaParts.join(" \xB7 "));
       row.addEventListener("contextmenu", (e) => {
@@ -1948,7 +1948,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Plan categories").setDesc("Recipe categories to include when generating plans (comma-separated)").addText(
-      (text) => text.setPlaceholder("mains, soups, salads").setValue(this.plugin.dataStore.getData().settings.planCategories.join(", ")).onChange((value) => {
+      (text) => text.setPlaceholder("Mains, soups, salads").setValue(this.plugin.dataStore.getData().settings.planCategories.join(", ")).onChange((value) => {
         const cats = value.split(",").map((s) => s.trim()).filter(Boolean);
         void this.plugin.dataStore.updateSettings({ planCategories: cats });
       })
@@ -1960,13 +1960,13 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Todoist integration").setHeading();
-    new import_obsidian4.Setting(containerEl).setName("Todoist api token").setDesc("Your Todoist api token (Todoist settings > integrations > developer)").addText(
-      (text) => text.setPlaceholder("Enter api token...").setValue(this.plugin.dataStore.getData().settings.todoistApiToken).onChange((value) => {
+    new import_obsidian4.Setting(containerEl).setName("Todoist API token").setDesc("Your Todoist API token (Todoist > Integrations > Developer)").addText(
+      (text) => text.setPlaceholder("Enter API token...").setValue(this.plugin.dataStore.getData().settings.todoistApiToken).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Todoist project name").setDesc("Name of the Todoist project for grocery lists (created if it does not exist)").addText(
-      (text) => text.setPlaceholder("grocery list").setValue(this.plugin.dataStore.getData().settings.todoistProjectName).onChange((value) => {
+      (text) => text.setPlaceholder("Grocery list").setValue(this.plugin.dataStore.getData().settings.todoistProjectName).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ todoistProjectName: value });
       })
     );

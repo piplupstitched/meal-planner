@@ -56,7 +56,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 			.setDesc('Recipe categories to include when generating plans (comma-separated)')
 			.addText(text =>
 				text
-					.setPlaceholder('mains, soups, salads')
+					.setPlaceholder('Mains, soups, salads')
 					.setValue(this.plugin.dataStore.getData().settings.planCategories.join(', '))
 					.onChange((value) => {
 						const cats = value.split(',').map(s => s.trim()).filter(Boolean);
@@ -83,11 +83,11 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName('Todoist integration').setHeading();
 
 		new Setting(containerEl)
-			.setName('Todoist api token')
-			.setDesc('Your Todoist api token (Todoist settings > integrations > developer)')
+			.setName('Todoist API token')
+			.setDesc('Your Todoist API token (Todoist > Integrations > Developer)')
 			.addText(text =>
 				text
-					.setPlaceholder('Enter api token...')
+					.setPlaceholder('Enter API token...')
 					.setValue(this.plugin.dataStore.getData().settings.todoistApiToken)
 					.onChange((value) => {
 						void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
@@ -99,7 +99,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 			.setDesc('Name of the Todoist project for grocery lists (created if it does not exist)')
 			.addText(text =>
 				text
-					.setPlaceholder('grocery list')
+					.setPlaceholder('Grocery list')
 					.setValue(this.plugin.dataStore.getData().settings.todoistProjectName)
 					.onChange((value) => {
 						void this.plugin.dataStore.updateSettings({ todoistProjectName: value });
