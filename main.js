@@ -1961,7 +1961,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
     );
     new import_obsidian4.Setting(containerEl).setName("Todoist integration").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Todoist api token").setDesc("Your Todoist api token (Todoist settings > integrations > developer)").addText(
-      (text) => text.setPlaceholder("Enter API token...").setValue(this.plugin.dataStore.getData().settings.todoistApiToken).onChange((value) => {
+      (text) => text.setPlaceholder("Enter api token...").setValue(this.plugin.dataStore.getData().settings.todoistApiToken).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
       })
     );
@@ -2672,14 +2672,14 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       }
     });
     if (resp.status < 200 || resp.status >= 300) {
-      throw new Error(`Failed to fetch URL (${resp.status})`);
+      throw new Error(`Failed to fetch url (${resp.status})`);
     }
     return resp.text;
   }
   async createImportedRecipeFile(draft) {
     const folder = this.getImportFolderForMealType(draft.mealType);
     await this.ensureFolderPath(folder);
-    const baseName = this.toSafeFileName(draft.title || "Imported Recipe");
+    const baseName = this.toSafeFileName(draft.title || "Imported recipe");
     const availablePath = this.app.vault.getAvailablePath(`${folder}/${baseName}`, "md");
     const markdown = this.buildImportedRecipeMarkdown(draft);
     return this.app.vault.create(availablePath, markdown);
@@ -2708,7 +2708,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     }
   }
   toSafeFileName(name) {
-    return name.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "Imported Recipe";
+    return name.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "Imported recipe";
   }
   buildImportedRecipeMarkdown(draft) {
     const mealType = draft.mealType.length > 0 ? draft.mealType : ["dinner"];
@@ -2741,7 +2741,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       ...instructions.map((step, i) => `${i + 1}. ${step}`),
       "",
       "## Notes",
-      "- Imported from URL. Review and adjust as needed.",
+      "- Imported from url. Review and adjust as needed.",
       ""
     ];
     return lines.join("\n");

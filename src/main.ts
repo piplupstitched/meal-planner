@@ -415,7 +415,7 @@ export default class MealPlannerPlugin extends Plugin {
 		});
 
 		if (resp.status < 200 || resp.status >= 300) {
-			throw new Error(`Failed to fetch URL (${resp.status})`);
+			throw new Error(`Failed to fetch url (${resp.status})`);
 		}
 		return resp.text;
 	}
@@ -424,7 +424,7 @@ export default class MealPlannerPlugin extends Plugin {
 		const folder = this.getImportFolderForMealType(draft.mealType);
 		await this.ensureFolderPath(folder);
 
-		const baseName = this.toSafeFileName(draft.title || 'Imported Recipe');
+		const baseName = this.toSafeFileName(draft.title || 'Imported recipe');
 		const availablePath = this.app.vault.getAvailablePath(`${folder}/${baseName}`, 'md');
 		const markdown = this.buildImportedRecipeMarkdown(draft);
 		return this.app.vault.create(availablePath, markdown);
@@ -458,7 +458,7 @@ export default class MealPlannerPlugin extends Plugin {
 			.replace(/[\\/:*?"<>|]/g, '')
 			.replace(/\s+/g, ' ')
 			.trim()
-			.slice(0, 120) || 'Imported Recipe';
+			.slice(0, 120) || 'Imported recipe';
 	}
 
 	private buildImportedRecipeMarkdown(draft: ImportedRecipeDraft): string {
@@ -493,7 +493,7 @@ export default class MealPlannerPlugin extends Plugin {
 			...instructions.map((step, i) => `${i + 1}. ${step}`),
 			'',
 			'## Notes',
-			'- Imported from URL. Review and adjust as needed.',
+			'- Imported from url. Review and adjust as needed.',
 			'',
 		];
 

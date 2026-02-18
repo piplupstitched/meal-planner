@@ -87,7 +87,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 			.setDesc('Your Todoist api token (Todoist settings > integrations > developer)')
 			.addText(text =>
 				text
-					.setPlaceholder('Enter API token...')
+					.setPlaceholder('Enter api token...')
 					.setValue(this.plugin.dataStore.getData().settings.todoistApiToken)
 					.onChange((value) => {
 						void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
