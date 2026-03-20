@@ -219,10 +219,12 @@ var RecipeParser = class {
   /**
    * Extract category and subcategory from file path.
    * "Recipes/4. Mains/Chicken/file.md" -> { category: "Mains", subcategory: "Chicken" }
+   * Works for any recipe folder depth (e.g. "04_Personal/Home/Recipes").
    */
   extractCategories(filePath) {
+    const depth = this.recipeFolderPath.split("/").length;
     const parts = filePath.split("/");
-    const folders = parts.slice(1, -1);
+    const folders = parts.slice(depth, -1);
     let category = "";
     let subcategory = "";
     if (folders.length >= 1) {
@@ -271,8 +273,6 @@ var DEFAULT_DATA = {
     dinnersPerWeek: 5,
     leftoverLunches: true,
     planCategories: ["Mains", "Soups", "Salads"],
-    todoistApiToken: "",
-    todoistProjectName: "Grocery List",
     groceryExportPath: "Grocery List.md"
   }
 };
@@ -1119,10 +1119,6 @@ var MealPlanView = class extends import_obsidian2.ItemView {
     manualBtn.addEventListener("click", () => {
       this.plugin.browseRecipes();
     });
-    const importBtn = actions.createEl("button", { text: "Import URL" });
-    importBtn.addEventListener("click", () => {
-      this.plugin.openImportRecipeModal();
-    });
     const clearBtn = actions.createEl("button", { text: "Clear plan" });
     clearBtn.addEventListener("click", () => {
       const now = Date.now();
@@ -1191,15 +1187,14 @@ var MealPlanView = class extends import_obsidian2.ItemView {
               );
             }
             this.render();
-          })().catch(() => {
-          });
+          })().catch((e) => console.error("Meal Planner:", e));
         });
         const info2 = row2.createDiv("meal-info");
         const dayRow2 = info2.createDiv("meal-day-row");
         if (meal.plannedDate !== lastDate) {
           dayRow2.createEl("span", { text: dayName, cls: "meal-day" });
         }
-        dayRow2.createEl("span", { text: "Leftover", cls: "meal-leftover-badge" });
+        dayRow2.createEl("span", { text: "leftover", cls: "meal-leftover-badge" });
         const servingsLabel = meal.servings > 1 ? ` (x${meal.servings})` : "";
         const titleEl2 = info2.createEl("div", {
           text: `${recipe.title}${servingsLabel}`,
@@ -1209,7 +1204,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
           this.plugin.openRecipeFile(recipe.filePath);
         });
         const meta2 = info2.createDiv("meal-meta");
-        meta2.setText(`Lunch \xB7 ${recipe.caloriesPerServing || "?"} cal/serving`);
+        meta2.setText(`lunch \xB7 ${recipe.caloriesPerServing || "?"} cal/serving`);
         lastDate = meal.plannedDate;
         continue;
       }
@@ -1277,8 +1272,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
             );
           }
           this.render();
-        })().catch(() => {
-        });
+        })().catch((e) => console.error("Meal Planner:", e));
       });
       const info = row.createDiv("meal-info");
       const dayRow = info.createDiv("meal-day-row");
@@ -1292,7 +1286,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
           cls: "meal-seasonal-badge",
           attr: { "aria-label": `In season: ${inSeason.join(", ")}` }
         });
-        badge.setText("Seasonal");
+        badge.setText("seasonal");
         badge.setAttribute("title", `In season: ${inSeason.join(", ")}`);
       }
       const hasLeftovers = plan.meals.some(
@@ -1300,7 +1294,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       );
       if (hasLeftovers) {
         dayRow.createEl("span", {
-          text: "Leftovers",
+          text: `+leftovers`,
           cls: "meal-has-leftovers-badge"
         });
       }
@@ -1317,9 +1311,9 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       if (recipe.frontmatter.cook_time)
         metaParts.push(recipe.frontmatter.cook_time);
       if (stats.daysSinceLastMade !== null) {
-        metaParts.push(`Last made ${stats.daysSinceLastMade}d ago`);
+        metaParts.push(`last made ${stats.daysSinceLastMade}d ago`);
       } else {
-        metaParts.push("Never made");
+        metaParts.push("never made");
       }
       meta.setText(metaParts.join(" \xB7 "));
       row.addEventListener("contextmenu", (e) => {
@@ -1564,8 +1558,7 @@ var RecipeBrowserModal = class extends import_obsidian3.Modal {
           this.addedCount++;
           new import_obsidian3.Notice(`Added "${recipe.title}" to this week's plan.`);
           this.render();
-        })().catch(() => {
-        });
+        })().catch((e) => console.error("Meal Planner:", e));
       });
     }
   }
@@ -1608,13 +1601,6 @@ var GroceryListModal = class extends import_obsidian3.Modal {
     saveBtn.addEventListener("click", () => {
       void this.saveToVault();
     });
-    const token = this.plugin.dataStore.getData().settings.todoistApiToken;
-    if (token) {
-      const todoistBtn = toolbar.createEl("button", { text: "Send to Todoist", cls: "grocery-todoist-btn" });
-      todoistBtn.addEventListener("click", () => {
-        void this.sendToTodoist();
-      });
-    }
     const checkedCount = this.items.filter((i) => i.checked).length;
     toolbar.createEl("span", {
       text: `${checkedCount}/${this.items.length} checked`,
@@ -1686,8 +1672,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
     const markdown = this.buildMarkdown();
     void navigator.clipboard.writeText(markdown).then(() => {
       new import_obsidian3.Notice("Grocery list copied to clipboard.");
-    }).catch(() => {
-    });
+    }).catch((e) => { console.error("Meal Planner: clipboard write failed", e); new import_obsidian3.Notice("Failed to copy to clipboard."); });
   }
   // ── Export: Save to Vault ──
   async saveToVault() {
@@ -1700,113 +1685,6 @@ var GroceryListModal = class extends import_obsidian3.Modal {
       await this.app.vault.create(path, markdown);
     }
     new import_obsidian3.Notice(`Grocery list saved to ${path}`);
-  }
-  // ── Export: Todoist ──
-  async sendToTodoist() {
-    const settings = this.plugin.dataStore.getData().settings;
-    const token = settings.todoistApiToken;
-    if (!token) {
-      new import_obsidian3.Notice("Todoist api token not configured. Set it in meal planner settings.");
-      return;
-    }
-    try {
-      const projectId = await this.getOrCreateTodoistProject(token, settings.todoistProjectName);
-      await this.clearTodoistProject(token, projectId);
-      const groups = this.plugin.groceryGenerator.groupByCategory(this.items);
-      let addedCount = 0;
-      for (const [category, items] of groups) {
-        const sectionName = this.categoryLabel(category);
-        const sectionId = await this.createTodoistSection(token, projectId, sectionName);
-        for (const item of items) {
-          const qty = item.quantity ? `${item.quantity}${item.unit ? " " + item.unit : ""} ` : "";
-          const taskContent = `${qty}${item.name}`;
-          const description = item.fromRecipes.length > 0 ? `For: ${item.fromRecipes.join(", ")}` : "";
-          await (0, import_obsidian3.requestUrl)({
-            url: "https://api.todoist.com/rest/v2/tasks",
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              content: taskContent,
-              description,
-              project_id: projectId,
-              section_id: sectionId
-            })
-          });
-          addedCount++;
-        }
-      }
-      new import_obsidian3.Notice(`Sent ${addedCount} items to Todoist project "${settings.todoistProjectName}".`);
-    } catch (e) {
-      console.error("Todoist export failed:", e);
-      new import_obsidian3.Notice(`Todoist export failed: ${e.message}`);
-    }
-  }
-  async getOrCreateTodoistProject(token, name) {
-    const resp = await (0, import_obsidian3.requestUrl)({
-      url: "https://api.todoist.com/rest/v2/projects",
-      method: "GET",
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const projects = resp.json;
-    const existing = projects.find((p) => p.name === name);
-    if (existing)
-      return existing.id;
-    const createResp = await (0, import_obsidian3.requestUrl)({
-      url: "https://api.todoist.com/rest/v2/projects",
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ name })
-    });
-    return createResp.json.id;
-  }
-  async clearTodoistProject(token, projectId) {
-    const resp = await (0, import_obsidian3.requestUrl)({
-      url: `https://api.todoist.com/rest/v2/tasks?project_id=${projectId}`,
-      method: "GET",
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const tasks = resp.json;
-    for (const task of tasks) {
-      await (0, import_obsidian3.requestUrl)({
-        url: `https://api.todoist.com/rest/v2/tasks/${task.id}`,
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-    }
-    const sectionsResp = await (0, import_obsidian3.requestUrl)({
-      url: `https://api.todoist.com/rest/v2/sections?project_id=${projectId}`,
-      method: "GET",
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const sections = sectionsResp.json;
-    for (const section of sections) {
-      await (0, import_obsidian3.requestUrl)({
-        url: `https://api.todoist.com/rest/v2/sections/${section.id}`,
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-    }
-  }
-  async createTodoistSection(token, projectId, name) {
-    const resp = await (0, import_obsidian3.requestUrl)({
-      url: "https://api.todoist.com/rest/v2/sections",
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        project_id: projectId,
-        name
-      })
-    });
-    return resp.json.id;
   }
   // ── Shared markdown builder ──
   buildMarkdown() {
@@ -1831,73 +1709,6 @@ var GroceryListModal = class extends import_obsidian3.Modal {
       lines.push("");
     }
     return lines.join("\n");
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-var ImportRecipeModal = class extends import_obsidian3.Modal {
-  constructor(app, plugin) {
-    super(app);
-    this.url = "";
-    this.statusEl = null;
-    this.importBtn = null;
-    this.plugin = plugin;
-  }
-  onOpen() {
-    this.modalEl.addClass("meal-planner-modal", "recipe-import");
-    this.titleEl.setText("Import recipe from url");
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.createEl("p", {
-      text: "Paste a recipe url or Pinterest pin url. The importer will try structured recipe data first.",
-      cls: "recipe-count"
-    });
-    new import_obsidian3.Setting(contentEl).setName("Recipe url").setDesc("Example: https://example.com/recipe or https://www.pinterest.com/pin/...").addText((text) => {
-      text.setPlaceholder("https://...").setValue(this.url).onChange((value) => {
-        this.url = value.trim();
-      });
-      text.inputEl.addEventListener("keydown", (e) => {
-        e.stopPropagation();
-        if (e.key === "Enter") {
-          e.preventDefault();
-          void this.importNow();
-        }
-      });
-      window.setTimeout(() => text.inputEl.focus(), 0);
-    });
-    const actions = contentEl.createDiv("recipe-import-actions");
-    this.importBtn = actions.createEl("button", { text: "Import recipe" });
-    this.importBtn.addEventListener("click", () => {
-      void this.importNow();
-    });
-    const cancelBtn = actions.createEl("button", { text: "Cancel" });
-    cancelBtn.addEventListener("click", () => this.close());
-    this.statusEl = contentEl.createEl("p", { cls: "recipe-count" });
-  }
-  async importNow() {
-    if (!this.url) {
-      new import_obsidian3.Notice("Please paste a url first.");
-      return;
-    }
-    if (!this.importBtn)
-      return;
-    this.importBtn.disabled = true;
-    if (this.statusEl)
-      this.statusEl.setText("Importing recipe...");
-    try {
-      const file = await this.plugin.importRecipeFromUrl(this.url);
-      new import_obsidian3.Notice(`Imported "${file.basename}"`);
-      this.plugin.openRecipeFile(file.path);
-      this.close();
-    } catch (e) {
-      const msg = e.message || "Import failed.";
-      new import_obsidian3.Notice(`Import failed: ${msg}`);
-      if (this.statusEl)
-        this.statusEl.setText(`Import failed: ${msg}`);
-    } finally {
-      this.importBtn.disabled = false;
-    }
   }
   onClose() {
     this.contentEl.empty();
@@ -1931,7 +1742,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian4.Setting(containerEl).setName("Meal planner options").setHeading();
+    new import_obsidian4.Setting(containerEl).setName("Meal planner settings").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Recipe folder path").setDesc("Path to your recipe folder relative to vault root").addText(
       (text) => text.setPlaceholder("Recipes").setValue(this.plugin.dataStore.getData().settings.recipeFolderPath).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ recipeFolderPath: value });
@@ -1948,7 +1759,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Plan categories").setDesc("Recipe categories to include when generating plans (comma-separated)").addText(
-      (text) => text.setPlaceholder("Mains, soups, salads").setValue(this.plugin.dataStore.getData().settings.planCategories.join(", ")).onChange((value) => {
+      (text) => text.setPlaceholder("mains, soups, salads").setValue(this.plugin.dataStore.getData().settings.planCategories.join(", ")).onChange((value) => {
         const cats = value.split(",").map((s) => s.trim()).filter(Boolean);
         void this.plugin.dataStore.updateSettings({ planCategories: cats });
       })
@@ -1957,17 +1768,6 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
     new import_obsidian4.Setting(containerEl).setName("Grocery list file path").setDesc("Vault-relative path for the exported grocery list markdown file").addText(
       (text) => text.setPlaceholder("grocery-list.md").setValue(this.plugin.dataStore.getData().settings.groceryExportPath).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ groceryExportPath: value });
-      })
-    );
-    new import_obsidian4.Setting(containerEl).setName("Todoist integration").setHeading();
-    new import_obsidian4.Setting(containerEl).setName("Todoist API token").setDesc("Your Todoist API token (Todoist > Integrations > Developer)").addText(
-      (text) => text.setPlaceholder("Enter API token...").setValue(this.plugin.dataStore.getData().settings.todoistApiToken).onChange((value) => {
-        void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
-      })
-    );
-    new import_obsidian4.Setting(containerEl).setName("Todoist project name").setDesc("Name of the Todoist project for grocery lists (created if it does not exist)").addText(
-      (text) => text.setPlaceholder("Grocery list").setValue(this.plugin.dataStore.getData().settings.todoistProjectName).onChange((value) => {
-        void this.plugin.dataStore.updateSettings({ todoistProjectName: value });
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Statistics").setHeading();
@@ -1984,357 +1784,9 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
         void (async () => {
           await this.plugin.refreshRecipes();
           this.display();
-        })().catch(() => {
-        });
+        })().catch((e) => console.error("Meal Planner:", e));
       })
     );
-  }
-};
-
-// src/webRecipeParser.ts
-var WebRecipeParser = class {
-  static parseRecipeFromHtml(html, fallbackUrl) {
-    const recipes = this.extractRecipeObjects(html);
-    if (recipes.length === 0)
-      return null;
-    recipes.sort((a, b) => this.recipeScore(b) - this.recipeScore(a));
-    const recipe = recipes[0];
-    const title = this.cleanText(recipe.name || recipe.headline || "Imported Recipe");
-    const sourceUrl = this.cleanText(recipe.url || fallbackUrl);
-    const servings = this.normalizeYield(recipe.recipeYield);
-    const prepTime = this.formatDuration(recipe.prepTime);
-    const cookTime = this.formatDuration(recipe.cookTime);
-    const totalTime = this.formatDuration(recipe.totalTime);
-    const ingredients = this.normalizeStringList(recipe.recipeIngredient || recipe.ingredients);
-    const instructions = this.extractInstructions(recipe.recipeInstructions);
-    const nutrition = this.isJsonObject(recipe.nutrition) ? recipe.nutrition : {};
-    const caloriesPerServing = this.extractNumberString(nutrition.calories);
-    const protein = this.extractNumberString(nutrition.proteinContent);
-    const netCarbs = this.extractNumberString(
-      nutrition.carbohydrateContent || nutrition.carbs || nutrition.netCarbs
-    );
-    const keywords = this.normalizeStringList(recipe.keywords);
-    const categories = this.normalizeStringList(recipe.recipeCategory);
-    const cuisines = this.normalizeStringList(recipe.recipeCuisine);
-    const combined = [...keywords, ...categories, ...cuisines].map((s) => s.toLowerCase());
-    const mealType = this.detectMealType(combined);
-    const diet = this.detectDietTags(combined);
-    const tags = this.unique([
-      ...keywords,
-      ...categories,
-      ...cuisines,
-      "imported"
-    ]).slice(0, 12);
-    return {
-      title,
-      sourceUrl,
-      servings,
-      prepTime,
-      cookTime,
-      totalTime,
-      mealType,
-      caloriesPerServing,
-      netCarbs,
-      protein,
-      diet,
-      tags,
-      ingredients,
-      instructions
-    };
-  }
-  static extractPinterestOutboundUrl(html) {
-    const metaMatch = html.match(/property=["']og:see_also["'][^>]*content=["']([^"']+)["']/i);
-    if (metaMatch?.[1]) {
-      const u = this.tryDecodeUrl(metaMatch[1]);
-      if (this.isLikelyExternalRecipeUrl(u))
-        return u;
-    }
-    const offsiteLinks = html.match(/https:\/\/www\.pinterest\.com\/offsite\/\?[^"'<\s]+/gi) || [];
-    for (const link of offsiteLinks) {
-      try {
-        const urlObj = new URL(link);
-        const target = urlObj.searchParams.get("url");
-        const u = this.tryDecodeUrl(target || "");
-        if (this.isLikelyExternalRecipeUrl(u))
-          return u;
-      } catch {
-      }
-    }
-    const escapedLinkMatches = html.match(/"link":"(https?:[^"]+)"/gi) || [];
-    for (const raw of escapedLinkMatches) {
-      const m = raw.match(/"link":"([^"]+)"/i);
-      if (!m?.[1])
-        continue;
-      const u = this.tryDecodeUrl(m[1]);
-      if (this.isLikelyExternalRecipeUrl(u))
-        return u;
-    }
-    return null;
-  }
-  static extractRecipeObjects(html) {
-    const scripts = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || [];
-    const recipes = [];
-    for (const scriptTag of scripts) {
-      const body = scriptTag.replace(/^<script[^>]*>/i, "").replace(/<\/script>$/i, "").trim();
-      const parsed = this.tryParseJsonLd(body);
-      if (!parsed)
-        continue;
-      this.walkForRecipeObjects(parsed, recipes);
-    }
-    return recipes;
-  }
-  static walkForRecipeObjects(node, out) {
-    if (!node)
-      return;
-    if (Array.isArray(node)) {
-      for (const item of node)
-        this.walkForRecipeObjects(item, out);
-      return;
-    }
-    if (!this.isJsonObject(node))
-      return;
-    const obj = node;
-    if (this.isRecipeType(obj["@type"])) {
-      out.push(obj);
-    }
-    for (const value of Object.values(obj)) {
-      this.walkForRecipeObjects(value, out);
-    }
-  }
-  static isRecipeType(typeVal) {
-    if (!typeVal)
-      return false;
-    if (Array.isArray(typeVal))
-      return typeVal.some((t) => this.isRecipeType(t));
-    if (typeof typeVal === "string")
-      return typeVal.toLowerCase().includes("recipe");
-    if (this.isJsonObject(typeVal)) {
-      const nestedType = typeVal["@type"];
-      return this.isRecipeType(nestedType);
-    }
-    return false;
-  }
-  static recipeScore(recipe) {
-    const ingredients = this.normalizeStringList(recipe.recipeIngredient || recipe.ingredients);
-    const instructions = this.extractInstructions(recipe.recipeInstructions);
-    let score = 0;
-    score += ingredients.length * 3;
-    score += instructions.length * 4;
-    if (recipe.name)
-      score += 5;
-    if (recipe.nutrition)
-      score += 2;
-    return score;
-  }
-  static tryParseJsonLd(raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) || this.isJsonObject(parsed))
-        return parsed;
-      return null;
-    } catch {
-      try {
-        const cleaned = this.stripControlChars(raw);
-        const parsed = JSON.parse(cleaned);
-        if (Array.isArray(parsed) || this.isJsonObject(parsed))
-          return parsed;
-        return null;
-      } catch {
-        return null;
-      }
-    }
-  }
-  static extractInstructions(input) {
-    const steps = [];
-    const walk = (node) => {
-      if (!node)
-        return;
-      if (Array.isArray(node)) {
-        for (const item of node)
-          walk(item);
-        return;
-      }
-      if (typeof node === "string") {
-        const s = this.cleanText(node);
-        if (s)
-          steps.push(s);
-        return;
-      }
-      if (!this.isJsonObject(node))
-        return;
-      const obj = node;
-      if (typeof obj.text === "string") {
-        const s = this.cleanText(obj.text);
-        if (s)
-          steps.push(s);
-      }
-      if (Array.isArray(obj.itemListElement))
-        walk(obj.itemListElement);
-      if (Array.isArray(obj.steps))
-        walk(obj.steps);
-    };
-    walk(input);
-    return this.unique(steps);
-  }
-  static normalizeStringList(value) {
-    if (!value)
-      return [];
-    if (Array.isArray(value)) {
-      return this.unique(
-        value.map((v) => typeof v === "string" ? this.cleanText(v) : typeof v === "number" ? String(v) : "").filter(Boolean)
-      );
-    }
-    if (typeof value === "string") {
-      return this.unique(
-        value.split(",").map((v) => this.cleanText(v)).filter(Boolean)
-      );
-    }
-    return [];
-  }
-  static normalizeYield(yieldVal) {
-    if (!yieldVal)
-      return "";
-    if (typeof yieldVal === "string")
-      return this.cleanText(yieldVal);
-    if (typeof yieldVal === "number")
-      return String(yieldVal);
-    if (Array.isArray(yieldVal) && yieldVal.length > 0) {
-      const first = yieldVal[0];
-      if (typeof first === "string")
-        return this.cleanText(first);
-      if (typeof first === "number")
-        return String(first);
-    }
-    if (this.isJsonObject(yieldVal)) {
-      const text = yieldVal.text;
-      if (typeof text === "string")
-        return this.cleanText(text);
-      if (typeof text === "number")
-        return String(text);
-    }
-    return "";
-  }
-  static formatDuration(isoDuration) {
-    if (!isoDuration || typeof isoDuration !== "string")
-      return "";
-    const s = isoDuration.trim();
-    if (!s.startsWith("P"))
-      return s;
-    const m = s.match(/P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/i);
-    if (!m)
-      return s;
-    const days = parseInt(m[1] || "0", 10);
-    const hours = parseInt(m[2] || "0", 10);
-    const mins = parseInt(m[3] || "0", 10);
-    const parts = [];
-    if (days > 0)
-      parts.push(`${days}d`);
-    if (hours > 0)
-      parts.push(`${hours}h`);
-    if (mins > 0)
-      parts.push(`${mins}m`);
-    return parts.join(" ");
-  }
-  static extractNumberString(value) {
-    if (!value)
-      return "";
-    if (typeof value === "number")
-      return String(value);
-    if (typeof value === "boolean")
-      return "";
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        const parsed = this.extractNumberString(item);
-        if (parsed)
-          return parsed;
-      }
-      return "";
-    }
-    if (this.isJsonObject(value)) {
-      const candidates = ["value", "text", "@value", "name"];
-      for (const key of candidates) {
-        const parsed = this.extractNumberString(value[key]);
-        if (parsed)
-          return parsed;
-      }
-      return "";
-    }
-    const s = value;
-    const m = s.match(/([\d.]+)/);
-    return m ? m[1] : "";
-  }
-  static detectMealType(tokens) {
-    const mealTypes = [];
-    const addIfMatch = (key, type) => {
-      if (tokens.some((t) => t.includes(key)))
-        mealTypes.push(type);
-    };
-    addIfMatch("breakfast", "breakfast");
-    addIfMatch("brunch", "breakfast");
-    addIfMatch("lunch", "lunch");
-    addIfMatch("dinner", "dinner");
-    addIfMatch("main", "dinner");
-    addIfMatch("snack", "snack");
-    addIfMatch("dessert", "dessert");
-    return this.unique(mealTypes.length > 0 ? mealTypes : ["dinner"]);
-  }
-  static detectDietTags(tokens) {
-    const labels = [
-      "vegetarian",
-      "vegan",
-      "keto",
-      "low-carb",
-      "gluten-free",
-      "dairy-free",
-      "high-protein"
-    ];
-    return labels.filter((label) => {
-      const normalized = label.replace("-", " ");
-      return tokens.some((t) => t.includes(label) || t.includes(normalized));
-    });
-  }
-  static tryDecodeUrl(value) {
-    if (!value)
-      return "";
-    let s = value.trim();
-    s = s.replace(/\\u002F/gi, "/").replace(/\\\//g, "/");
-    try {
-      s = decodeURIComponent(s);
-    } catch {
-    }
-    return s;
-  }
-  static isLikelyExternalRecipeUrl(url) {
-    if (!url)
-      return false;
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-        return false;
-      const host = parsed.hostname.toLowerCase();
-      return !host.includes("pinterest.com");
-    } catch {
-      return false;
-    }
-  }
-  static cleanText(s) {
-    return s.replace(/\s+/g, " ").trim();
-  }
-  static unique(values) {
-    return [...new Set(values.filter(Boolean))];
-  }
-  static isJsonObject(value) {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-  }
-  static stripControlChars(raw) {
-    let out = "";
-    for (const ch of raw) {
-      const code = ch.charCodeAt(0);
-      if (code >= 32 || code === 9 || code === 10 || code === 13) {
-        out += ch;
-      }
-    }
-    return out;
   }
 };
 
@@ -2368,23 +1820,12 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     this.addCommand({
       id: "view-grocery-list",
       name: "View grocery list",
-      callback: () => {
-        this.showGroceryList();
-      }
+      callback: () => this.showGroceryList()
     });
     this.addCommand({
       id: "browse-recipes",
       name: "Browse recipes",
-      callback: () => {
-        this.browseRecipes();
-      }
-    });
-    this.addCommand({
-      id: "import-recipe-from-url",
-      name: "Import recipe from url",
-      callback: () => {
-        this.openImportRecipeModal();
-      }
+      callback: () => this.browseRecipes()
     });
     this.addCommand({
       id: "list-parsed-recipes",
@@ -2409,6 +1850,8 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     });
   }
   onunload() {
+    // All addEventListener calls are on Modal/ItemView contentEl elements that
+    // Obsidian destroys on close/unload. No global listeners or timers to clean up.
   }
   // ── Core Operations ──
   async refreshRecipes() {
@@ -2452,35 +1895,10 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       new import_obsidian5.Notice("No recipes loaded. Refreshing...");
       void this.refreshRecipes().then(() => {
         new RecipeBrowserModal(this.app, this).open();
-      }).catch(() => {
-      });
+      }).catch((e) => console.error("Meal Planner:", e));
       return;
     }
     new RecipeBrowserModal(this.app, this).open();
-  }
-  openImportRecipeModal() {
-    new ImportRecipeModal(this.app, this).open();
-  }
-  async importRecipeFromUrl(rawUrl) {
-    const url = rawUrl.trim();
-    if (!this.isHttpUrl(url)) {
-      throw new Error("Please enter a valid http(s) url.");
-    }
-    const primaryHtml = await this.fetchHtml(url);
-    let draft = WebRecipeParser.parseRecipeFromHtml(primaryHtml, url);
-    if (!draft && /pinterest\.com/i.test(url)) {
-      const outboundUrl = WebRecipeParser.extractPinterestOutboundUrl(primaryHtml);
-      if (outboundUrl) {
-        const outboundHtml = await this.fetchHtml(outboundUrl);
-        draft = WebRecipeParser.parseRecipeFromHtml(outboundHtml, outboundUrl);
-      }
-    }
-    if (!draft) {
-      throw new Error("Could not find structured recipe data on that page.");
-    }
-    const file = await this.createImportedRecipeFile(draft);
-    await this.refreshRecipes();
-    return file;
   }
   async listParsedRecipes() {
     if (this.cachedRecipes.length === 0) {
@@ -2640,7 +2058,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       }
     }
     if (leaf) {
-      void workspace.revealLeaf(leaf);
+      workspace.revealLeaf(leaf);
       const view = leaf.view;
       if (view && typeof view.render === "function") {
         view.render();
@@ -2662,24 +2080,10 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       void this.app.workspace.getLeaf(false).openFile(file);
     }
   }
-  async fetchHtml(url) {
-    const resp = await (0, import_obsidian5.requestUrl)({
-      url,
-      method: "GET",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Meal Planner Obsidian Plugin)",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-      }
-    });
-    if (resp.status < 200 || resp.status >= 300) {
-      throw new Error(`Failed to fetch url (${resp.status})`);
-    }
-    return resp.text;
-  }
   async createImportedRecipeFile(draft) {
     const folder = this.getImportFolderForMealType(draft.mealType);
     await this.ensureFolderPath(folder);
-    const baseName = this.toSafeFileName(draft.title || "Imported recipe");
+    const baseName = this.toSafeFileName(draft.title || "Imported Recipe");
     const availablePath = this.app.vault.getAvailablePath(`${folder}/${baseName}`, "md");
     const markdown = this.buildImportedRecipeMarkdown(draft);
     return this.app.vault.create(availablePath, markdown);
@@ -2708,7 +2112,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     }
   }
   toSafeFileName(name) {
-    return name.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "Imported recipe";
+    return name.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "Imported Recipe";
   }
   buildImportedRecipeMarkdown(draft) {
     const mealType = draft.mealType.length > 0 ? draft.mealType : ["dinner"];
@@ -2741,7 +2145,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       ...instructions.map((step, i) => `${i + 1}. ${step}`),
       "",
       "## Notes",
-      "- Imported from url. Review and adjust as needed.",
+      "- Imported from URL. Review and adjust as needed.",
       ""
     ];
     return lines.join("\n");
