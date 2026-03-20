@@ -87,7 +87,7 @@ export class MealPlanView extends ItemView {
 		const plan = this.plugin.dataStore.getCurrentWeekPlan();
 		if (!plan || plan.meals.length === 0) {
 			container.createEl('p', {
-				text: 'No meal plan for this week. Click "Generate plan" or "Select meals" to create one.',
+				text: 'No meal plan for this week. Use the buttons above to generate or select meals.',
 				cls: 'meal-planner-empty',
 			});
 			return;

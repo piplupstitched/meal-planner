@@ -157,7 +157,7 @@ export class RecipeBrowserModal extends Modal {
 			meta.setText(parts.join(' | '));
 
 			// Add to plan button
-			const addBtn = row.createEl('button', { text: '+ plan', cls: 'recipe-add-btn' });
+			const addBtn = row.createEl('button', { text: 'Add to plan', cls: 'recipe-add-btn' });
 			addBtn.addEventListener('click', () => {
 				void (async () => {
 					await this.plugin.addRecipeToPlan(recipe);

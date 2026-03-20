@@ -1140,7 +1140,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
     const plan = this.plugin.dataStore.getCurrentWeekPlan();
     if (!plan || plan.meals.length === 0) {
       container.createEl("p", {
-        text: 'No meal plan for this week. Click "Generate plan" or "Select meals" to create one.',
+        text: "No meal plan for this week. Use the buttons above to generate or select meals.",
         cls: "meal-planner-empty"
       });
       return;
@@ -1549,7 +1549,7 @@ var RecipeBrowserModal = class extends import_obsidian3.Modal {
         parts.push(`cooked ${stats.timesCooked}x`);
       }
       meta.setText(parts.join(" | "));
-      const addBtn = row.createEl("button", { text: "+ plan", cls: "recipe-add-btn" });
+      const addBtn = row.createEl("button", { text: "Add to plan", cls: "recipe-add-btn" });
       addBtn.addEventListener("click", () => {
         void (async () => {
           await this.plugin.addRecipeToPlan(recipe);
@@ -1740,7 +1740,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian4.Setting(containerEl).setName("Meal planner options").setHeading();
+    new import_obsidian4.Setting(containerEl).setName("General").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Recipe folder path").setDesc("Path to your recipe folder relative to vault root").addText(
       (text) => text.setPlaceholder("Recipes").setValue(this.plugin.dataStore.getData().settings.recipeFolderPath).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ recipeFolderPath: value });
