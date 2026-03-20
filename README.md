@@ -1,6 +1,6 @@
 # Intelligent Meal Planner
 
-Intelligent meal planning for Obsidian with recipe indexing, weekly planning, manual meal selection, grocery list generation, and URL import.
+Intelligent meal planning for Obsidian with recipe indexing, weekly planning, manual meal selection, grocery list generation, and cooking history tracking.
 
 ## Features
 
@@ -10,9 +10,7 @@ Intelligent meal planning for Obsidian with recipe indexing, weekly planning, ma
 - Drag-and-drop reorder by day.
 - Mark meals cooked and track history.
 - Grocery list generation with category/store grouping.
-- Grocery export to vault markdown.
-- Optional Todoist grocery sync.
-- Import recipe from URL (including many Pinterest/source pages via structured recipe data).
+- Grocery export to vault markdown or clipboard.
 
 ## Commands
 
@@ -20,7 +18,6 @@ Intelligent meal planning for Obsidian with recipe indexing, weekly planning, ma
 - `Generate weekly meal plan`
 - `View grocery list`
 - `Browse recipes`
-- `Import recipe from URL`
 - `List all parsed recipes`
 - `Refresh recipe index`
 
@@ -28,7 +25,6 @@ Intelligent meal planning for Obsidian with recipe indexing, weekly planning, ma
 
 - `Generate Plan`
 - `Select Meals`
-- `Import URL`
 - `Clear Plan`
 - `Grocery List`
 
@@ -39,18 +35,25 @@ Intelligent meal planning for Obsidian with recipe indexing, weekly planning, ma
 - Leftover lunches
 - Plan categories
 - Grocery list file path
-- Todoist API token
-- Todoist project name
 
 ## Recipe Format
 
 This plugin expects markdown recipe notes in your recipe folder with YAML frontmatter and an `## Ingredients` section. It parses frontmatter and ingredient lists to drive planning and grocery features.
 
-## URL Import Notes
+Example frontmatter:
 
-- Best results when source pages include JSON-LD `Recipe` data (common on recipe sites).
-- Pinterest URLs are supported via outbound/source extraction when possible.
-- Some sites with anti-bot protection may fail to import.
+```yaml
+---
+title: Creamy Chicken Tortilla Soup
+meal_type: [dinner]
+servings: 6
+calories_per_serving: 380
+net_carbs: 12
+protein: 28
+diet: [gluten-free]
+tags: [chicken, soup, easy]
+---
+```
 
 ## Author
 
