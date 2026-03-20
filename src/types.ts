@@ -120,8 +120,6 @@ export interface MealPlannerSettings {
 	dinnersPerWeek: number;
 	leftoverLunches: boolean;
 	planCategories: string[];   // which recipe categories to include
-	todoistApiToken: string;
-	todoistProjectName: string;
 	groceryExportPath: string;  // vault-relative path for markdown export
 }
 
@@ -136,8 +134,6 @@ export const DEFAULT_DATA: MealPlannerData = {
 		dinnersPerWeek: 5,
 		leftoverLunches: true,
 		planCategories: ['Mains', 'Soups', 'Salads'],
-		todoistApiToken: '',
-		todoistProjectName: 'Grocery List',
 		groceryExportPath: 'Grocery List.md',
 	},
 };

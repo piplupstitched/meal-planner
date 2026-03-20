@@ -1,4 +1,4 @@
-import { App, Modal, Setting, Notice, FuzzySuggestModal, requestUrl, TFile } from 'obsidian';
+import { App, Modal, Notice, FuzzySuggestModal, TFile } from 'obsidian';
 import type MealPlannerPlugin from './main';
 import {
 	ParsedRecipe,
@@ -164,7 +164,7 @@ export class RecipeBrowserModal extends Modal {
 					this.addedCount++;
 					new Notice(`Added "${recipe.title}" to this week's plan.`);
 					this.render();
-				})().catch(() => {});
+				})().catch(e => console.error('Meal Planner:', e));
 			});
 		}
 	}
@@ -222,15 +222,6 @@ export class GroceryListModal extends Modal {
 			void this.saveToVault();
 		});
 
-		// Todoist button (only if API token configured)
-		const token = this.plugin.dataStore.getData().settings.todoistApiToken;
-		if (token) {
-			const todoistBtn = toolbar.createEl('button', { text: 'Send to Todoist', cls: 'grocery-todoist-btn' });
-			todoistBtn.addEventListener('click', () => {
-				void this.sendToTodoist();
-			});
-		}
-
 		const checkedCount = this.items.filter(i => i.checked).length;
 		toolbar.createEl('span', {
 			text: `${checkedCount}/${this.items.length} checked`,
@@ -255,7 +246,7 @@ export class GroceryListModal extends Modal {
 
 	private renderGroup(parent: HTMLElement, label: string, items: GroceryItem[]): void {
 		const group = parent.createDiv('grocery-group');
-		group.createEl('h4', { text: `${label} (${items.length})` });
+		group.createEl('div', { text: `${label} (${items.length})`, cls: 'grocery-group-label' });
 
 		for (const item of items) {
 			const row = group.createDiv('grocery-row');
@@ -314,7 +305,7 @@ export class GroceryListModal extends Modal {
 		const markdown = this.buildMarkdown();
 		void navigator.clipboard.writeText(markdown).then(() => {
 			new Notice('Grocery list copied to clipboard.');
-		}).catch(() => {});
+		}).catch(e => console.error('Meal Planner:', e));
 	}
 
 	// ── Export: Save to Vault ──
@@ -331,143 +322,6 @@ export class GroceryListModal extends Modal {
 		}
 
 		new Notice(`Grocery list saved to ${path}`);
-	}
-
-	// ── Export: Todoist ──
-
-	private async sendToTodoist(): Promise<void> {
-		const settings = this.plugin.dataStore.getData().settings;
-		const token = settings.todoistApiToken;
-		if (!token) {
-			new Notice('Todoist api token not configured. Set it in meal planner settings.');
-			return;
-		}
-
-		try {
-			// Get or create the project
-			const projectId = await this.getOrCreateTodoistProject(token, settings.todoistProjectName);
-
-			// Clear existing tasks in the project
-			await this.clearTodoistProject(token, projectId);
-
-			// Add items grouped by category
-			const groups = this.plugin.groceryGenerator.groupByCategory(this.items);
-			let addedCount = 0;
-
-			for (const [category, items] of groups) {
-				const sectionName = this.categoryLabel(category);
-
-				// Create a section for each category
-				const sectionId = await this.createTodoistSection(token, projectId, sectionName);
-
-				// Add each item as a task
-				for (const item of items) {
-					const qty = item.quantity ? `${item.quantity}${item.unit ? ' ' + item.unit : ''} ` : '';
-					const taskContent = `${qty}${item.name}`;
-					const description = item.fromRecipes.length > 0
-						? `For: ${item.fromRecipes.join(', ')}`
-						: '';
-
-					await requestUrl({
-						url: 'https://api.todoist.com/rest/v2/tasks',
-						method: 'POST',
-						headers: {
-							'Authorization': `Bearer ${token}`,
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify({
-							content: taskContent,
-							description: description,
-							project_id: projectId,
-							section_id: sectionId,
-						}),
-					});
-					addedCount++;
-				}
-			}
-
-			new Notice(`Sent ${addedCount} items to Todoist project "${settings.todoistProjectName}".`);
-		} catch (e) {
-			console.error('Todoist export failed:', e);
-			new Notice(`Todoist export failed: ${(e as Error).message}`);
-		}
-	}
-
-	private async getOrCreateTodoistProject(token: string, name: string): Promise<string> {
-		// List existing projects
-		const resp = await requestUrl({
-			url: 'https://api.todoist.com/rest/v2/projects',
-			method: 'GET',
-			headers: { 'Authorization': `Bearer ${token}` },
-		});
-
-		const projects = resp.json as Array<{ id: string; name: string }>;
-		const existing = projects.find(p => p.name === name);
-		if (existing) return existing.id;
-
-		// Create new project
-		const createResp = await requestUrl({
-			url: 'https://api.todoist.com/rest/v2/projects',
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${token}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({ name }),
-		});
-
-		return (createResp.json as { id: string }).id;
-	}
-
-	private async clearTodoistProject(token: string, projectId: string): Promise<void> {
-		// Get all tasks in the project
-		const resp = await requestUrl({
-			url: `https://api.todoist.com/rest/v2/tasks?project_id=${projectId}`,
-			method: 'GET',
-			headers: { 'Authorization': `Bearer ${token}` },
-		});
-
-		const tasks = resp.json as Array<{ id: string }>;
-		for (const task of tasks) {
-			await requestUrl({
-				url: `https://api.todoist.com/rest/v2/tasks/${task.id}`,
-				method: 'DELETE',
-				headers: { 'Authorization': `Bearer ${token}` },
-			});
-		}
-
-		// Also clear sections
-		const sectionsResp = await requestUrl({
-			url: `https://api.todoist.com/rest/v2/sections?project_id=${projectId}`,
-			method: 'GET',
-			headers: { 'Authorization': `Bearer ${token}` },
-		});
-
-		const sections = sectionsResp.json as Array<{ id: string }>;
-		for (const section of sections) {
-			await requestUrl({
-				url: `https://api.todoist.com/rest/v2/sections/${section.id}`,
-				method: 'DELETE',
-				headers: { 'Authorization': `Bearer ${token}` },
-			});
-		}
-	}
-
-	private async createTodoistSection(token: string, projectId: string, name: string): Promise<string> {
-		const resp = await requestUrl({
-			url: 'https://api.todoist.com/rest/v2/sections',
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${token}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				project_id: projectId,
-				name: name,
-			}),
-		});
-
-		return (resp.json as { id: string }).id;
 	}
 
 	// ── Shared markdown builder ──
@@ -507,90 +361,6 @@ export class GroceryListModal extends Modal {
 }
 
 // ── Recipe Suggest Modal (for swapping recipes) ──
-
-export class ImportRecipeModal extends Modal {
-	plugin: MealPlannerPlugin;
-	url: string = '';
-	private statusEl: HTMLElement | null = null;
-	private importBtn: HTMLButtonElement | null = null;
-
-	constructor(app: App, plugin: MealPlannerPlugin) {
-		super(app);
-		this.plugin = plugin;
-	}
-
-	onOpen(): void {
-		this.modalEl.addClass('meal-planner-modal', 'recipe-import');
-		this.titleEl.setText('Import recipe from url');
-
-		const { contentEl } = this;
-		contentEl.empty();
-
-		contentEl.createEl('p', {
-			text: 'Paste a recipe url or Pinterest pin url. The importer will try structured recipe data first.',
-			cls: 'recipe-count',
-		});
-
-		new Setting(contentEl)
-			.setName('Recipe url')
-			.setDesc('Example: https://example.com/recipe or https://www.pinterest.com/pin/...')
-			.addText(text => {
-				text
-					.setPlaceholder('https://...')
-					.setValue(this.url)
-					.onChange(value => {
-						this.url = value.trim();
-					});
-				text.inputEl.addEventListener('keydown', (e) => {
-					e.stopPropagation();
-					if (e.key === 'Enter') {
-						e.preventDefault();
-						void this.importNow();
-					}
-				});
-				window.setTimeout(() => text.inputEl.focus(), 0);
-			});
-
-		const actions = contentEl.createDiv('recipe-import-actions');
-		this.importBtn = actions.createEl('button', { text: 'Import recipe' });
-		this.importBtn.addEventListener('click', () => {
-			void this.importNow();
-		});
-
-		const cancelBtn = actions.createEl('button', { text: 'Cancel' });
-		cancelBtn.addEventListener('click', () => this.close());
-
-		this.statusEl = contentEl.createEl('p', { cls: 'recipe-count' });
-	}
-
-	private async importNow(): Promise<void> {
-		if (!this.url) {
-			new Notice('Please paste a url first.');
-			return;
-		}
-		if (!this.importBtn) return;
-
-		this.importBtn.disabled = true;
-		if (this.statusEl) this.statusEl.setText('Importing recipe...');
-
-		try {
-			const file = await this.plugin.importRecipeFromUrl(this.url);
-			new Notice(`Imported "${file.basename}"`);
-			this.plugin.openRecipeFile(file.path);
-			this.close();
-		} catch (e) {
-			const msg = (e as Error).message || 'Import failed.';
-			new Notice(`Import failed: ${msg}`);
-			if (this.statusEl) this.statusEl.setText(`Import failed: ${msg}`);
-		} finally {
-			this.importBtn.disabled = false;
-		}
-	}
-
-	onClose(): void {
-		this.contentEl.empty();
-	}
-}
 
 export class RecipeSuggestModal extends FuzzySuggestModal<ParsedRecipe> {
 	plugin: MealPlannerPlugin;

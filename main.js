@@ -219,12 +219,10 @@ var RecipeParser = class {
   /**
    * Extract category and subcategory from file path.
    * "Recipes/4. Mains/Chicken/file.md" -> { category: "Mains", subcategory: "Chicken" }
-   * Works for any recipe folder depth (e.g. "04_Personal/Home/Recipes").
    */
   extractCategories(filePath) {
-    const depth = this.recipeFolderPath.split("/").length;
     const parts = filePath.split("/");
-    const folders = parts.slice(depth, -1);
+    const folders = parts.slice(1, -1);
     let category = "";
     let subcategory = "";
     if (folders.length >= 1) {
@@ -1109,7 +1107,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
     container.empty();
     container.addClass("meal-planner-sidebar");
     const header = container.createDiv("meal-planner-header");
-    header.createEl("h3", { text: "Meal plan" });
+    header.createEl("div", { text: "Meal plan", cls: "meal-planner-title" });
     const actions = header.createDiv("meal-planner-actions");
     const genBtn = actions.createEl("button", { text: "Generate plan" });
     genBtn.addEventListener("click", () => {
@@ -1194,7 +1192,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
         if (meal.plannedDate !== lastDate) {
           dayRow2.createEl("span", { text: dayName, cls: "meal-day" });
         }
-        dayRow2.createEl("span", { text: "leftover", cls: "meal-leftover-badge" });
+        dayRow2.createEl("span", { text: "Leftover", cls: "meal-leftover-badge" });
         const servingsLabel = meal.servings > 1 ? ` (x${meal.servings})` : "";
         const titleEl2 = info2.createEl("div", {
           text: `${recipe.title}${servingsLabel}`,
@@ -1204,7 +1202,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
           this.plugin.openRecipeFile(recipe.filePath);
         });
         const meta2 = info2.createDiv("meal-meta");
-        meta2.setText(`lunch \xB7 ${recipe.caloriesPerServing || "?"} cal/serving`);
+        meta2.setText(`Lunch \xB7 ${recipe.caloriesPerServing || "?"} cal/serving`);
         lastDate = meal.plannedDate;
         continue;
       }
@@ -1286,7 +1284,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
           cls: "meal-seasonal-badge",
           attr: { "aria-label": `In season: ${inSeason.join(", ")}` }
         });
-        badge.setText("seasonal");
+        badge.setText("Seasonal");
         badge.setAttribute("title", `In season: ${inSeason.join(", ")}`);
       }
       const hasLeftovers = plan.meals.some(
@@ -1294,7 +1292,7 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       );
       if (hasLeftovers) {
         dayRow.createEl("span", {
-          text: `+leftovers`,
+          text: "Leftovers",
           cls: "meal-has-leftovers-badge"
         });
       }
@@ -1311,9 +1309,9 @@ var MealPlanView = class extends import_obsidian2.ItemView {
       if (recipe.frontmatter.cook_time)
         metaParts.push(recipe.frontmatter.cook_time);
       if (stats.daysSinceLastMade !== null) {
-        metaParts.push(`last made ${stats.daysSinceLastMade}d ago`);
+        metaParts.push(`Last made ${stats.daysSinceLastMade}d ago`);
       } else {
-        metaParts.push("never made");
+        metaParts.push("Never made");
       }
       meta.setText(metaParts.join(" \xB7 "));
       row.addEventListener("contextmenu", (e) => {
@@ -1621,7 +1619,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
   }
   renderGroup(parent, label, items) {
     const group = parent.createDiv("grocery-group");
-    group.createEl("h4", { text: `${label} (${items.length})` });
+    group.createEl("div", { text: `${label} (${items.length})`, cls: "grocery-group-label" });
     for (const item of items) {
       const row = group.createDiv("grocery-row");
       if (item.checked)
@@ -1672,7 +1670,7 @@ var GroceryListModal = class extends import_obsidian3.Modal {
     const markdown = this.buildMarkdown();
     void navigator.clipboard.writeText(markdown).then(() => {
       new import_obsidian3.Notice("Grocery list copied to clipboard.");
-    }).catch((e) => { console.error("Meal Planner: clipboard write failed", e); new import_obsidian3.Notice("Failed to copy to clipboard."); });
+    }).catch((e) => console.error("Meal Planner:", e));
   }
   // ── Export: Save to Vault ──
   async saveToVault() {
@@ -1742,7 +1740,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian4.Setting(containerEl).setName("Meal planner settings").setHeading();
+    new import_obsidian4.Setting(containerEl).setName("Meal planner options").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Recipe folder path").setDesc("Path to your recipe folder relative to vault root").addText(
       (text) => text.setPlaceholder("Recipes").setValue(this.plugin.dataStore.getData().settings.recipeFolderPath).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ recipeFolderPath: value });
@@ -1759,7 +1757,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
       })
     );
     new import_obsidian4.Setting(containerEl).setName("Plan categories").setDesc("Recipe categories to include when generating plans (comma-separated)").addText(
-      (text) => text.setPlaceholder("mains, soups, salads").setValue(this.plugin.dataStore.getData().settings.planCategories.join(", ")).onChange((value) => {
+      (text) => text.setPlaceholder("Mains, soups, salads").setValue(this.plugin.dataStore.getData().settings.planCategories.join(", ")).onChange((value) => {
         const cats = value.split(",").map((s) => s.trim()).filter(Boolean);
         void this.plugin.dataStore.updateSettings({ planCategories: cats });
       })
@@ -1820,12 +1818,16 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     this.addCommand({
       id: "view-grocery-list",
       name: "View grocery list",
-      callback: () => this.showGroceryList()
+      callback: () => {
+        this.showGroceryList();
+      }
     });
     this.addCommand({
       id: "browse-recipes",
       name: "Browse recipes",
-      callback: () => this.browseRecipes()
+      callback: () => {
+        this.browseRecipes();
+      }
     });
     this.addCommand({
       id: "list-parsed-recipes",
@@ -1850,8 +1852,6 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     });
   }
   onunload() {
-    // All addEventListener calls are on Modal/ItemView contentEl elements that
-    // Obsidian destroys on close/unload. No global listeners or timers to clean up.
   }
   // ── Core Operations ──
   async refreshRecipes() {
@@ -2058,7 +2058,7 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
       }
     }
     if (leaf) {
-      workspace.revealLeaf(leaf);
+      void workspace.revealLeaf(leaf);
       const view = leaf.view;
       if (view && typeof view.render === "function") {
         view.render();
@@ -2078,91 +2078,6 @@ var MealPlannerPlugin = class extends import_obsidian5.Plugin {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (file instanceof import_obsidian5.TFile) {
       void this.app.workspace.getLeaf(false).openFile(file);
-    }
-  }
-  async createImportedRecipeFile(draft) {
-    const folder = this.getImportFolderForMealType(draft.mealType);
-    await this.ensureFolderPath(folder);
-    const baseName = this.toSafeFileName(draft.title || "Imported Recipe");
-    const availablePath = this.app.vault.getAvailablePath(`${folder}/${baseName}`, "md");
-    const markdown = this.buildImportedRecipeMarkdown(draft);
-    return this.app.vault.create(availablePath, markdown);
-  }
-  getImportFolderForMealType(mealTypes) {
-    const root = this.dataStore.getRecipeFolderPath();
-    const normalized = mealTypes.map((m) => m.toLowerCase());
-    if (normalized.includes("breakfast"))
-      return `${root}/0. Breakfast/Imported`;
-    if (normalized.includes("lunch"))
-      return `${root}/3. Salads/Imported`;
-    if (normalized.includes("snack"))
-      return `${root}/11. Snacks/Imported`;
-    if (normalized.includes("dessert"))
-      return `${root}/7. Desserts/Imported`;
-    return `${root}/4. Mains/Imported`;
-  }
-  async ensureFolderPath(path) {
-    const parts = path.split("/").filter(Boolean);
-    let current = "";
-    for (const part of parts) {
-      current = current ? `${current}/${part}` : part;
-      if (!this.app.vault.getAbstractFileByPath(current)) {
-        await this.app.vault.createFolder(current);
-      }
-    }
-  }
-  toSafeFileName(name) {
-    return name.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "Imported Recipe";
-  }
-  buildImportedRecipeMarkdown(draft) {
-    const mealType = draft.mealType.length > 0 ? draft.mealType : ["dinner"];
-    const tags = draft.tags.length > 0 ? draft.tags : ["imported"];
-    const ingredients = draft.ingredients.length > 0 ? draft.ingredients : ["(add ingredients)"];
-    const instructions = draft.instructions.length > 0 ? draft.instructions : ["(add instructions)"];
-    const lines = [
-      "---",
-      `title: "${this.escapeYaml(draft.title)}"`,
-      `servings: "${this.escapeYaml(draft.servings)}"`,
-      `prep_time: "${this.escapeYaml(draft.prepTime)}"`,
-      `cook_time: "${this.escapeYaml(draft.cookTime)}"`,
-      `total_time: "${this.escapeYaml(draft.totalTime)}"`,
-      'difficulty: ""',
-      `meal_type: ${this.yamlArray(mealType)}`,
-      `calories_per_serving: "${this.escapeYaml(draft.caloriesPerServing)}"`,
-      `net_carbs: "${this.escapeYaml(draft.netCarbs)}"`,
-      `protein: "${this.escapeYaml(draft.protein)}"`,
-      `diet: ${this.yamlArray(draft.diet)}`,
-      `source: "${this.escapeYaml(draft.sourceUrl)}"`,
-      `tags: ${this.yamlArray(tags)}`,
-      "---",
-      "",
-      `# ${draft.title}`,
-      "",
-      "## Ingredients",
-      ...ingredients.map((i) => `- ${i}`),
-      "",
-      "## Instructions",
-      ...instructions.map((step, i) => `${i + 1}. ${step}`),
-      "",
-      "## Notes",
-      "- Imported from URL. Review and adjust as needed.",
-      ""
-    ];
-    return lines.join("\n");
-  }
-  yamlArray(values) {
-    const cleaned = values.map((v) => `"${this.escapeYaml(v)}"`).join(", ");
-    return `[${cleaned}]`;
-  }
-  escapeYaml(value) {
-    return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  }
-  isHttpUrl(url) {
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
-    } catch {
-      return false;
     }
   }
 };

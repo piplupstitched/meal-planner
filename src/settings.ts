@@ -80,32 +80,6 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 					})
 			);
 
-		new Setting(containerEl).setName('Todoist integration').setHeading();
-
-		new Setting(containerEl)
-			.setName('Todoist API token')
-			.setDesc('Your Todoist API token (Todoist > Integrations > Developer)')
-			.addText(text =>
-				text
-					.setPlaceholder('Enter API token...')
-					.setValue(this.plugin.dataStore.getData().settings.todoistApiToken)
-					.onChange((value) => {
-						void this.plugin.dataStore.updateSettings({ todoistApiToken: value });
-					})
-			);
-
-		new Setting(containerEl)
-			.setName('Todoist project name')
-			.setDesc('Name of the Todoist project for grocery lists (created if it does not exist)')
-			.addText(text =>
-				text
-					.setPlaceholder('Grocery list')
-					.setValue(this.plugin.dataStore.getData().settings.todoistProjectName)
-					.onChange((value) => {
-						void this.plugin.dataStore.updateSettings({ todoistProjectName: value });
-					})
-			);
-
 		// ── Stats ──
 
 		new Setting(containerEl).setName('Statistics').setHeading();
@@ -131,7 +105,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 						void (async () => {
 							await this.plugin.refreshRecipes();
 							this.display();
-						})().catch(() => {});
+						})().catch(e => console.error('Meal Planner:', e));
 					})
 			);
 	}

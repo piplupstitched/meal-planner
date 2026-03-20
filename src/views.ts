@@ -46,7 +46,7 @@ export class MealPlanView extends ItemView {
 
 		// Header
 		const header = container.createDiv('meal-planner-header');
-		header.createEl('h3', { text: 'Meal plan' });
+		header.createEl('div', { text: 'Meal plan', cls: 'meal-planner-title' });
 
 		const actions = header.createDiv('meal-planner-actions');
 		const genBtn = actions.createEl('button', { text: 'Generate plan' });
@@ -57,11 +57,6 @@ export class MealPlanView extends ItemView {
 		const manualBtn = actions.createEl('button', { text: 'Select meals' });
 		manualBtn.addEventListener('click', () => {
 			this.plugin.browseRecipes();
-		});
-
-		const importBtn = actions.createEl('button', { text: 'Import URL' });
-		importBtn.addEventListener('click', () => {
-			this.plugin.openImportRecipeModal();
 		});
 
 		const clearBtn = actions.createEl('button', { text: 'Clear plan' });
@@ -150,7 +145,7 @@ export class MealPlanView extends ItemView {
 							);
 						}
 						this.render();
-					})().catch(() => {});
+					})().catch(e => console.error('Meal Planner:', e));
 				});
 
 				const info = row.createDiv('meal-info');
@@ -256,7 +251,7 @@ export class MealPlanView extends ItemView {
 						);
 					}
 					this.render();
-				})().catch(() => {});
+				})().catch(e => console.error('Meal Planner:', e));
 			});
 
 			const info = row.createDiv('meal-info');

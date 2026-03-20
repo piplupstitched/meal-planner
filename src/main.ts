@@ -1,13 +1,12 @@
-import { Plugin, Notice, WorkspaceLeaf, TFile, requestUrl } from 'obsidian';
+import { Plugin, Notice, WorkspaceLeaf, TFile } from 'obsidian';
 import { ParsedRecipe, PlannedMeal } from './types';
 import { RecipeParser } from './recipeParser';
 import { DataStore } from './dataStore';
 import { MealPlanner } from './mealPlanner';
 import { GroceryListGenerator } from './groceryList';
 import { MealPlanView, MEAL_PLAN_VIEW_TYPE } from './views';
-import { RecipeBrowserModal, GroceryListModal, RecipeSuggestModal, ImportRecipeModal } from './modals';
+import { RecipeBrowserModal, GroceryListModal, RecipeSuggestModal } from './modals';
 import { MealPlannerSettingTab } from './settings';
-import { ImportedRecipeDraft, WebRecipeParser } from './webRecipeParser';
 
 export default class MealPlannerPlugin extends Plugin {
 	dataStore: DataStore;
@@ -54,14 +53,6 @@ export default class MealPlannerPlugin extends Plugin {
 			name: 'Browse recipes',
 			callback: () => {
 				this.browseRecipes();
-			},
-		});
-
-		this.addCommand({
-			id: 'import-recipe-from-url',
-			name: 'Import recipe from url',
-			callback: () => {
-				this.openImportRecipeModal();
 			},
 		});
 
@@ -152,41 +143,10 @@ export default class MealPlannerPlugin extends Plugin {
 			new Notice('No recipes loaded. Refreshing...');
 			void this.refreshRecipes().then(() => {
 				new RecipeBrowserModal(this.app, this).open();
-			}).catch(() => {});
+			}).catch(e => console.error('Meal Planner:', e));
 			return;
 		}
 		new RecipeBrowserModal(this.app, this).open();
-	}
-
-	openImportRecipeModal(): void {
-		new ImportRecipeModal(this.app, this).open();
-	}
-
-	async importRecipeFromUrl(rawUrl: string): Promise<TFile> {
-		const url = rawUrl.trim();
-		if (!this.isHttpUrl(url)) {
-			throw new Error('Please enter a valid http(s) url.');
-		}
-
-		const primaryHtml = await this.fetchHtml(url);
-		let draft = WebRecipeParser.parseRecipeFromHtml(primaryHtml, url);
-
-		// Pinterest pins usually need one extra hop to the source site.
-		if (!draft && /pinterest\.com/i.test(url)) {
-			const outboundUrl = WebRecipeParser.extractPinterestOutboundUrl(primaryHtml);
-			if (outboundUrl) {
-				const outboundHtml = await this.fetchHtml(outboundUrl);
-				draft = WebRecipeParser.parseRecipeFromHtml(outboundHtml, outboundUrl);
-			}
-		}
-
-		if (!draft) {
-			throw new Error('Could not find structured recipe data on that page.');
-		}
-
-		const file = await this.createImportedRecipeFile(draft);
-		await this.refreshRecipes();
-		return file;
 	}
 
 	async listParsedRecipes(): Promise<void> {
@@ -401,120 +361,6 @@ export default class MealPlannerPlugin extends Plugin {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (file instanceof TFile) {
 			void this.app.workspace.getLeaf(false).openFile(file);
-		}
-	}
-
-	private async fetchHtml(url: string): Promise<string> {
-		const resp = await requestUrl({
-			url,
-			method: 'GET',
-			headers: {
-				'User-Agent': 'Mozilla/5.0 (Meal Planner Obsidian Plugin)',
-				'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-			},
-		});
-
-		if (resp.status < 200 || resp.status >= 300) {
-			throw new Error(`Failed to fetch url (${resp.status})`);
-		}
-		return resp.text;
-	}
-
-	private async createImportedRecipeFile(draft: ImportedRecipeDraft): Promise<TFile> {
-		const folder = this.getImportFolderForMealType(draft.mealType);
-		await this.ensureFolderPath(folder);
-
-		const baseName = this.toSafeFileName(draft.title || 'Imported recipe');
-		const availablePath = this.app.vault.getAvailablePath(`${folder}/${baseName}`, 'md');
-		const markdown = this.buildImportedRecipeMarkdown(draft);
-		return this.app.vault.create(availablePath, markdown);
-	}
-
-	private getImportFolderForMealType(mealTypes: string[]): string {
-		const root = this.dataStore.getRecipeFolderPath();
-		const normalized = mealTypes.map(m => m.toLowerCase());
-
-		if (normalized.includes('breakfast')) return `${root}/0. Breakfast/Imported`;
-		if (normalized.includes('lunch')) return `${root}/3. Salads/Imported`;
-		if (normalized.includes('snack')) return `${root}/11. Snacks/Imported`;
-		if (normalized.includes('dessert')) return `${root}/7. Desserts/Imported`;
-		return `${root}/4. Mains/Imported`;
-	}
-
-	private async ensureFolderPath(path: string): Promise<void> {
-		const parts = path.split('/').filter(Boolean);
-		let current = '';
-
-		for (const part of parts) {
-			current = current ? `${current}/${part}` : part;
-			if (!this.app.vault.getAbstractFileByPath(current)) {
-				await this.app.vault.createFolder(current);
-			}
-		}
-	}
-
-	private toSafeFileName(name: string): string {
-		return name
-			.replace(/[\\/:*?"<>|]/g, '')
-			.replace(/\s+/g, ' ')
-			.trim()
-			.slice(0, 120) || 'Imported recipe';
-	}
-
-	private buildImportedRecipeMarkdown(draft: ImportedRecipeDraft): string {
-		const mealType = draft.mealType.length > 0 ? draft.mealType : ['dinner'];
-		const tags = draft.tags.length > 0 ? draft.tags : ['imported'];
-		const ingredients = draft.ingredients.length > 0 ? draft.ingredients : ['(add ingredients)'];
-		const instructions = draft.instructions.length > 0 ? draft.instructions : ['(add instructions)'];
-
-		const lines: string[] = [
-			'---',
-			`title: "${this.escapeYaml(draft.title)}"`,
-			`servings: "${this.escapeYaml(draft.servings)}"`,
-			`prep_time: "${this.escapeYaml(draft.prepTime)}"`,
-			`cook_time: "${this.escapeYaml(draft.cookTime)}"`,
-			`total_time: "${this.escapeYaml(draft.totalTime)}"`,
-			'difficulty: ""',
-			`meal_type: ${this.yamlArray(mealType)}`,
-			`calories_per_serving: "${this.escapeYaml(draft.caloriesPerServing)}"`,
-			`net_carbs: "${this.escapeYaml(draft.netCarbs)}"`,
-			`protein: "${this.escapeYaml(draft.protein)}"`,
-			`diet: ${this.yamlArray(draft.diet)}`,
-			`source: "${this.escapeYaml(draft.sourceUrl)}"`,
-			`tags: ${this.yamlArray(tags)}`,
-			'---',
-			'',
-			`# ${draft.title}`,
-			'',
-			'## Ingredients',
-			...ingredients.map(i => `- ${i}`),
-			'',
-			'## Instructions',
-			...instructions.map((step, i) => `${i + 1}. ${step}`),
-			'',
-			'## Notes',
-			'- Imported from url. Review and adjust as needed.',
-			'',
-		];
-
-		return lines.join('\n');
-	}
-
-	private yamlArray(values: string[]): string {
-		const cleaned = values.map(v => `"${this.escapeYaml(v)}"`).join(', ');
-		return `[${cleaned}]`;
-	}
-
-	private escapeYaml(value: string): string {
-		return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-	}
-
-	private isHttpUrl(url: string): boolean {
-		try {
-			const parsed = new URL(url);
-			return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-		} catch {
-			return false;
 		}
 	}
 }
