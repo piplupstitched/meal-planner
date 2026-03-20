@@ -149,7 +149,7 @@ export class RecipeBrowserModal extends Modal {
 			if (stats.daysSinceLastMade !== null) {
 				parts.push(`${stats.daysSinceLastMade}d ago`);
 			} else {
-				parts.push('never made');
+				parts.push('Never made');
 			}
 			if (stats.timesCooked > 0) {
 				parts.push(`cooked ${stats.timesCooked}x`);

@@ -13,7 +13,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl).setName('General').setHeading();
+		new Setting(containerEl).setName('Planning').setHeading();
 
 		new Setting(containerEl)
 			.setName('Recipe folder path')
@@ -73,7 +73,7 @@ export class MealPlannerSettingTab extends PluginSettingTab {
 			.setDesc('Vault-relative path for the exported grocery list markdown file')
 			.addText(text =>
 				text
-					.setPlaceholder('grocery-list.md')
+					.setPlaceholder('Grocery-list.md')
 					.setValue(this.plugin.dataStore.getData().settings.groceryExportPath)
 					.onChange((value) => {
 						void this.plugin.dataStore.updateSettings({ groceryExportPath: value });

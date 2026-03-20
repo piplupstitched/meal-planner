@@ -1543,7 +1543,7 @@ var RecipeBrowserModal = class extends import_obsidian3.Modal {
       if (stats.daysSinceLastMade !== null) {
         parts.push(`${stats.daysSinceLastMade}d ago`);
       } else {
-        parts.push("never made");
+        parts.push("Never made");
       }
       if (stats.timesCooked > 0) {
         parts.push(`cooked ${stats.timesCooked}x`);
@@ -1740,7 +1740,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian4.Setting(containerEl).setName("General").setHeading();
+    new import_obsidian4.Setting(containerEl).setName("Planning").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Recipe folder path").setDesc("Path to your recipe folder relative to vault root").addText(
       (text) => text.setPlaceholder("Recipes").setValue(this.plugin.dataStore.getData().settings.recipeFolderPath).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ recipeFolderPath: value });
@@ -1764,7 +1764,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
     );
     new import_obsidian4.Setting(containerEl).setName("Grocery export").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Grocery list file path").setDesc("Vault-relative path for the exported grocery list markdown file").addText(
-      (text) => text.setPlaceholder("grocery-list.md").setValue(this.plugin.dataStore.getData().settings.groceryExportPath).onChange((value) => {
+      (text) => text.setPlaceholder("Grocery-list.md").setValue(this.plugin.dataStore.getData().settings.groceryExportPath).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ groceryExportPath: value });
       })
     );
