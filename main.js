@@ -1764,7 +1764,7 @@ var MealPlannerSettingTab = class extends import_obsidian4.PluginSettingTab {
     );
     new import_obsidian4.Setting(containerEl).setName("Grocery export").setHeading();
     new import_obsidian4.Setting(containerEl).setName("Grocery list file path").setDesc("Vault-relative path for the exported grocery list markdown file").addText(
-      (text) => text.setPlaceholder("Grocery-list.md").setValue(this.plugin.dataStore.getData().settings.groceryExportPath).onChange((value) => {
+      (text) => text.setPlaceholder("Grocery-list").setValue(this.plugin.dataStore.getData().settings.groceryExportPath).onChange((value) => {
         void this.plugin.dataStore.updateSettings({ groceryExportPath: value });
       })
     );
